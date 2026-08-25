@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rock-paper-scissors"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = ["ac2>=0.3.21"]
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rock_paper_scissors"]
+
+[[tool.uv.index]]
+name = "ac2"
+url = "https://api.appliedcompute.com/v1/pypi/simple/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+default = true
+
+[tool.uv.sources]
+ac2 = { index = "ac2" }
+
+[tool.ac2]

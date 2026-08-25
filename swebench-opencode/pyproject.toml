@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "swebench-opencode"
+version = "0.1.0"
+description = "AC2 custom-harness starter using OpenCode on SWE-bench Verified."
+requires-python = ">=3.12"
+dependencies = [
+    "modal>=1.3.1",
+    "pydantic>=2.0.0",
+    "swebench>=4.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "ac2",
+    "datasets>=2.18.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/swebench_opencode"]
+
+[[tool.uv.index]]
+name = "ac2"
+url = "https://api.appliedcompute.com/v1/pypi/simple/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+default = true
+
+[tool.uv.sources]
+ac2 = { index = "ac2" }
+
+[tool.ac2]
