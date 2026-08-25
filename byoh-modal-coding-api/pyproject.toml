@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Self-hosted AC2 coding harness using Harbor, OpenCode, and Modal."
 requires-python = ">=3.12"
 dependencies = [
-    "ac2>=0.3.30",
+    "ac2",
     "pydantic>=2.0.0",
 ]
 

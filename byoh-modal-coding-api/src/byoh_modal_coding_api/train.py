@@ -24,6 +24,7 @@ def main() -> None:
             num_train_steps=args.steps,
             samples_per_problem=2,
             problem_batch_size=1,
+            global_sampling_concurrency=2,
             ac2_grader="HarborRewardGrader",
             ac2_train_dataset=args.dataset,
             custom_harness=TrainingCustomHarnessConfig(
