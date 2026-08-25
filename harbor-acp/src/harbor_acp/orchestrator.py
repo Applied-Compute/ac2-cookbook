@@ -100,6 +100,7 @@ async def _run_harbor(
 ) -> JobResult:
     config = {
         "$schema": "https://opencode.ai/config.json",
+        "agent": {"title": {"disable": True}},
         "provider": {
             "ac2": {
                 "npm": "@ai-sdk/openai-compatible",
