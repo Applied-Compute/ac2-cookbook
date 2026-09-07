@@ -1,13 +1,28 @@
+import contextlib
+import io
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from wordle.agent import WordleAgent, WordleQwen36Agent
-from wordle.train import monitor
-from wordle.train_qwen36 import validate_allocation
+from wordle.train import main, monitor
+from wordle.train_qwen36 import CONFIG, validate_allocation
 
 
 class AllocationTests(unittest.TestCase):
+    def test_four_hour_budget_dry_run_and_upper_bound(self):
+        for args in [[], ["--max-minutes", "235"], ["--max-minutes", "20"]]:
+            with self.subTest(args=args), patch("sys.argv", ["train_qwen36", "--dry-run", *args]), \
+                    patch("wordle.train.Client") as client, contextlib.redirect_stdout(io.StringIO()):
+                main(CONFIG, default_max_minutes=235)
+                client.assert_not_called()
+        for minutes in ["0", "-1", "236", "nan", "inf"]:
+            with self.subTest(minutes=minutes), \
+                    patch("sys.argv", ["train_qwen36", "--dry-run", "--max-minutes", minutes]), \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                main(CONFIG, default_max_minutes=235)
+            self.assertEqual(error.exception.code, 2)
+
     def test_accepts_four_plus_four_and_rejects_multiplied_allocation(self):
         flags = {"actor-num-nodes": 1, "actor-num-gpus-per-node": 4,
                  "rollout-num-gpus": 4, "rollout-num-gpus-per-engine": 2,

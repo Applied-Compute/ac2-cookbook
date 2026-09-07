@@ -60,8 +60,9 @@ This uses one eight-B200 node: a four-GPU training replica (TP4, EP4, CP1)
 and two two-GPU inference replicas. Optimizer state is offloaded to CPU.
 Each checkpoint eval uses two additional B200s. The Qwen3.6 agent uses its
 native XML function-call format with thinking enabled. The launcher verifies
-the submitted allocation and stops the run if it differs. The same 55-minute
-deadline covers submission, startup, training, and attached evaluations.
+the submitted allocation and stops the run if it differs. Its default 235-minute
+deadline covers submission, startup, training, and attached evaluations, leaving
+five minutes for shutdown within a four-hour budget.
 Keep the launcher running; its PID and absolute deadline are saved with the run.
 
 Training uses Modal B200s, four training and four inference replicas, 40 GRPO
@@ -86,11 +87,13 @@ run `uv run python -m wordle.audit runs/eval.jsonl`. It exits nonzero for token
 limit errors, unfinished games, early abandonment, or missing grades.
 
 **Keep the training launcher running.** It monitors training and attached evals
-and requests a stop after 55 minutes including submission/startup, leaving five
-minutes for shutdown. The deadline can stop this run before all 40 steps finish.
+and requests a stop after 55 minutes for Qwen3-4B or 235 minutes for Qwen3.6,
+including submission/startup and leaving five minutes for shutdown. The deadline
+can stop the run before all 40 steps finish.
 It also stops the run on Ctrl-C or a polling error. This is a client-side deadline;
 closing or killing the launcher removes that protection. Use `--max-minutes 20`
-for a shorter budget. Run IDs and submitted configs are saved under `runs/`.
+for a shorter budget (the maximum is 235 minutes). Run IDs, absolute deadlines,
+watchdog PIDs, and submitted configs are saved under `runs/`.
 
 Inspect the printed training ID with these commands:
 

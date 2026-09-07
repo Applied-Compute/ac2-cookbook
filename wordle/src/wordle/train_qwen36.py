@@ -77,4 +77,4 @@ def verify_run(client, train_id: str, output: Path) -> None:
 
 
 if __name__ == "__main__":
-    main(CONFIG, verify_run=verify_run)
+    main(CONFIG, verify_run=verify_run, default_max_minutes=235)

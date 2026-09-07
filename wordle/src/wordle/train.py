@@ -97,14 +97,14 @@ def monitor(client: Client, train_id: str, deadline: float, *, expected_evals: i
                     time.sleep(15)
 
 
-def main(config: TrainingConfig = CONFIG, *, verify_run=None) -> None:
+def main(config: TrainingConfig = CONFIG, *, verify_run=None, default_max_minutes: float = 55) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-minutes", type=float, default=55,
-                        help="Submission-to-stop budget, at most 55 minutes (leaves shutdown time).")
+    parser.add_argument("--max-minutes", type=float, default=default_max_minutes,
+                        help="Submission-to-stop budget, at most 235 minutes (leaves shutdown time).")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    if not 0 < args.max_minutes <= 55:
-        parser.error("--max-minutes must be greater than zero and at most 55")
+    if not 0 < args.max_minutes <= 235:
+        parser.error("--max-minutes must be greater than zero and at most 235")
     if args.dry_run:
         print(json.dumps(asdict(config), indent=2))
         return
