@@ -13,7 +13,12 @@ is stripped and lowercase is accepted. Invalid guesses return "invalid guess".
 You have six attempts, including invalid submissions. A correct guess ends the
 game immediately. A win on attempt k earns (11-k)/10; losing earns zero.
 On every turn, call check_answer exactly once. Continue guessing until the game
-ends. Output only the tool call; do not write explanations or a final message."""
+ends. Output only the tool call; do not write explanations or a final message.
+Wrap every tool call in <tool_call> and </tool_call> tags. For example:
+<tool_call>
+{"name": "check_answer", "arguments": {"guess": "crane"}}
+</tool_call>
+Use that format with your chosen word on every turn; bare JSON is not a tool call."""
 
 
 EVAL_MODEL = os.environ.get("WORDLE_EVAL_MODEL", "Qwen/Qwen3-4B")
