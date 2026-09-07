@@ -14,6 +14,7 @@ from wordle.dataset import EVAL_DATASET, TRAIN_DATASET, build_datasets
 from wordle.environment import WordleEnvironment
 from wordle.grader import WordleGrader
 from wordle.train import CONFIG, monitor
+from wordle.user import WordleUser
 from wordle.words import GREEN, WHITE, YELLOW, dictionary, normalize_word, score_guess
 
 
@@ -149,6 +150,8 @@ class EnvironmentTests(unittest.IsolatedAsyncioTestCase):
     async def test_text_is_not_a_winning_submission(self):
         _, done = await self.env.step([Message(role="assistant", content="APPLE")])
         self.assertTrue(done)
+        self.assertFalse(self.env.is_terminated)
+        self.assertEqual(self.env.guess_count, 0)
         self.assertEqual(await self.reward(), 0)
 
     async def test_invalid_task_fails(self):
@@ -188,17 +191,77 @@ class DeadlineTests(unittest.TestCase):
 
 
 class SamplingTests(unittest.IsolatedAsyncioTestCase):
-    async def test_eval_and_training_disable_thinking_at_their_api_boundaries(self):
+    async def test_eval_and_training_preserve_thinking_at_their_api_boundaries(self):
         # Training uses its own client; agent kwargs alone do not affect it.
         payload = CONFIG.to_payload(train_tasks=[], eval_tasks=[],
                                     training_agent_names=["WordleAgent"])
-        self.assertEqual(payload["apply_chat_template_kwargs"], {"enable_thinking": False})
+        self.assertEqual(payload["apply_chat_template_kwargs"], {"enable_thinking": True})
         client = CompletionClient(WordleAgent.model_configuration)
         client._adapter = Mock(complete=AsyncMock())
         await client.complete([Message(role="user", content="Make a guess.")])
         sent = client._adapter.complete.call_args.kwargs
         self.assertEqual(sent["extra_body"]["chat_template_kwargs"],
                          payload["apply_chat_template_kwargs"])
+
+
+class ContinuationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_text_answer_can_resume_without_resetting_episode_or_guess_count(self):
+        from ac2.runtime import Task
+        from ac2.runtime.base.orchestrator import canonical_orchestrator
+        from ac2.runtime.completions.types import Usage
+        from ac2.runtime.orchestration.eval import run_eval
+
+        class Reply:
+            def __init__(self, items):
+                self.result = SimpleNamespace(items=items, usage=Usage())
+
+            async def __aiter__(self):
+                if False:
+                    yield
+
+        env, agent = WordleEnvironment(), WordleAgent()
+        replies = iter([
+            Reply([Message(role="assistant", content="The answer is APPLE.")]),
+            Reply([call("apple")]),
+        ])
+        orchestrator = canonical_orchestrator(agent, env)
+        episode_ids = []
+
+        async def complete(**kwargs):
+            episode_ids.append(orchestrator.trace[0].id)
+            return next(replies)
+
+        agent.get_completion = AsyncMock(side_effect=complete)
+        task = Task(input=[Message(role="user", content="Make a guess.")],
+                    env_params={"base_word": "apple"})
+        results = await run_eval(lambda: orchestrator, WordleGrader(),
+                                 tasks_by_dataset={"test": [task]}, num_samples=1,
+                                 max_parallel=1, on_error="raise", user_factory=WordleUser)
+        self.assertEqual(results[0].grades[0].score, 1)
+        self.assertEqual(env.guess_count, 1)
+        self.assertEqual(len(set(episode_ids)), 1)
+        self.assertEqual(agent.get_completion.call_count, 2)
+        second_input = agent.get_completion.call_args.kwargs["items"]
+        self.assertIn("written answer does not count", second_input[-1].content)
+
+    async def test_reminders_are_bounded_and_reset_per_task(self):
+        from ac2.runtime import Task
+
+        task = Task(input=[Message(role="user", content="Make a guess.")])
+        env, user = WordleEnvironment(), WordleUser()
+        await env.setup({"base_word": "apple"})
+        await user.setup(task)
+        self.assertEqual(await user.respond(env, []), task.input)
+        for _ in range(3):
+            self.assertIsNotNone(await user.respond(env, []))
+        self.assertIsNone(await user.respond(env, []))
+        self.assertEqual(env.terminated_reason, "abandoned")
+        self.assertEqual(env.guess_count, 0)
+        await env.setup({"base_word": "apple"})
+        await user.setup(task)
+        self.assertEqual(await user.respond(env, []), task.input)
+        await env.check_answer("apple")
+        self.assertIsNone(await user.respond(env, []))
 
 
 class AuditTests(unittest.TestCase):

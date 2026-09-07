@@ -21,6 +21,7 @@ CONFIG = TrainingConfig(
     ac2_agent="WordleAgent",
     ac2_env="WordleEnvironment",
     ac2_grader="WordleGrader",
+    ac2_user="WordleUser",
     ac2_train_dataset=TRAIN_DATASET,
     training_agent_names=["WordleAgent"],
     backend="modal",
@@ -29,14 +30,14 @@ CONFIG = TrainingConfig(
     eval_before_train=False,
     # Training replaces the agent's completion client, so its eval kwargs do
     # not apply here. This budget covers the entire game, including tool turns.
-    apply_chat_template_kwargs={"enable_thinking": False},
-    max_response_len=4096,
-    max_total_len=8192,
-    rollout_sample_timeout=180,
+    apply_chat_template_kwargs={"enable_thinking": True},
+    max_response_len=24576,
+    max_total_len=32768,
+    rollout_sample_timeout=600,
     global_sampling_concurrency=32,
     keep_last_checkpoints=1,
     extra_train_args={"save_interval": 5},
-    name="wordle-qwen3-4b-modal-no-thinking",
+    name="wordle-qwen3-4b-modal-thinking",
 )
 
 TERMINAL_STATUSES = {"completed", "succeeded", "failed", "cancelled", "canceled", "stopped"}

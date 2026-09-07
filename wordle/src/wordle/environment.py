@@ -39,7 +39,8 @@ class WordleEnvironment(Environment):
             return [], True
         calls = [item for item in items if isinstance(item, FunctionCall)]
         if not calls:
-            self.terminated_reason = "abandoned"
+            # End this assistant turn. WordleUser can remind the agent to submit
+            # through the tool without ending the game or counting a guess.
             return [], True
         outputs = []
         # Sequential dispatch keeps multiple calls from overrunning the budget.

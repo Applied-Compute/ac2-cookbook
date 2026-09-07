@@ -13,6 +13,9 @@ copies from left to right ([duplicate-letter examples](https://www.classes.cs.uc
 A correct guess or six attempts ends the rollout. Invalid submissions count as
 attempts. Wins on guesses 1–6 earn **1.0, 0.9, 0.8, 0.7, 0.6, 0.5**; losses,
 invalid guesses, and unfinished games earn zero.
+Premature text answers receive up to three reminders to use the tool. Reminders
+do not count as guesses or reset the rollout's token budget; continued refusal
+ends as an unfinished game with zero reward.
 
 ## Set up and test
 
@@ -48,8 +51,10 @@ uv run python -m wordle.train
 
 Training uses Modal B200s, four training and four inference replicas, 10 GRPO
 steps, eight words per batch, and four samples per word. Training-time eval is
-off for this small run. Qwen3 thinking is disabled in both eval and training;
-the 4,096-token training response budget is shared across the whole game.
+off for this small run. Qwen3 thinking is enabled in both eval and training.
+Training allows 24,576 response tokens across the whole game, a total context
+of 32,768 tokens, and up to 600 seconds per rollout. Eval allows 8,192 output
+tokens per turn.
 AC2 builds and uploads the project before submitting;
 commit and push your branch first to make the source easy to reproduce. Qwen3-4B
 weights must be available to the Modal backend. Training uses AC2 credentials

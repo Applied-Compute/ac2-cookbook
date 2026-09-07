@@ -24,6 +24,7 @@ async def main(*, local: bool = False, model: str | None = None,
             os.environ.pop(key, None)
     config = EvalConfig(
         agent="WordleAgent", env="WordleEnvironment", grader="WordleGrader",
+        user="WordleUser",
         num_samples=1, max_parallel=4, on_error="raise",
         **({"tasks": build_datasets()[EVAL_DATASET][:num_tasks]} if local else {
             "dataset": DatasetSource(dataset=EVAL_DATASET, num_tasks=num_tasks),
