@@ -1,0 +1,188 @@
+import itertools
+import json
+import unittest
+from collections import Counter
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from ac2.runtime import FunctionCall, Message
+
+from wordle.dataset import EVAL_DATASET, TRAIN_DATASET, build_datasets
+from wordle.environment import WordleEnvironment
+from wordle.grader import WordleGrader
+from wordle.train import monitor
+from wordle.words import GREEN, WHITE, YELLOW, dictionary, normalize_word, score_guess
+
+
+def call(guess, index=0):
+    return FunctionCall(call_id=str(index), name="check_answer", arguments=json.dumps({"guess": guess}))
+
+
+class ScoringTests(unittest.TestCase):
+    def test_examples(self):
+        for answer, guess, expected in [
+            ("APPLE", "APPLE", "🟩🟩🟩🟩🟩"),
+            ("APPLE", "GUESS", "⬜⬜🟨⬜⬜"),
+            ("APPLE", "ALLEY", "🟩🟨⬜🟨⬜"),
+            ("APPLE", "PAPAL", "🟨🟨🟩⬜🟨"),
+            ("CLOSE", "LEAVE", "🟨⬜⬜⬜🟩"),
+            ("THOSE", "GEESE", "⬜⬜⬜🟩🟩"),
+            ("ABBEY", "KEEPS", "⬜🟨⬜⬜⬜"),
+            ("BANAL", "LLAMA", "🟨⬜🟨⬜🟨"),
+            ("DREAD", "ADDED", "🟨🟨⬜🟨🟩"),
+        ]:
+            with self.subTest(answer=answer, guess=guess):
+                self.assertEqual(score_guess(answer, guess), expected)
+
+    def test_exhaustive_letter_accounting(self):
+        # 59,049 pairs cover every repeat/position pattern over three letters.
+        words = ["".join(letters) for letters in itertools.product("ABC", repeat=5)]
+        for answer in words:
+            for guess in words:
+                tiles = score_guess(answer, guess)
+                self.assertEqual([t == GREEN for t in tiles],
+                                 [a == g for a, g in zip(answer, guess)])
+                matched = Counter(g for g, t in zip(guess, tiles) if t != WHITE)
+                self.assertEqual(matched, Counter(answer) & Counter(guess))
+                for letter in "ABC":
+                    non_green = [t for g, t in zip(guess, tiles) if g == letter and t != GREEN]
+                    self.assertEqual(non_green, sorted(non_green, key=lambda t: t != YELLOW))
+
+    def test_normalization(self):
+        self.assertEqual(normalize_word(" \tapPle\n"), "APPLE")
+        for value in ["", "four", "longer", "a pple", "caféx", "ＡＰＰＬＥ", "ſassy",
+                      "aßes", "12345", "apple!", None, 12345, ["apple"]]:
+            with self.subTest(value=value):
+                self.assertIsNone(normalize_word(value))
+
+    def test_dictionary_and_split(self):
+        self.assertEqual(len(dictionary()), 8636)
+        self.assertTrue(all(normalize_word(w) == w for w in dictionary()))
+        datasets = build_datasets()
+        self.assertEqual(len(datasets[TRAIN_DATASET]), 2048)
+        self.assertEqual(len(datasets[EVAL_DATASET]), 256)
+        train = {t.env_params["base_word"] for t in datasets[TRAIN_DATASET]}
+        evaluation = {t.env_params["base_word"] for t in datasets[EVAL_DATASET]}
+        self.assertFalse(train & evaluation)
+        self.assertEqual(len(train | evaluation), 2304)
+        self.assertEqual(datasets, build_datasets())
+        prompts = {t.input[0].content for tasks in datasets.values() for t in tasks}
+        self.assertEqual(len(prompts), 1)
+        self.assertTrue(all(not t.grader_params for tasks in datasets.values() for t in tasks))
+
+
+class EnvironmentTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.env = WordleEnvironment()
+        await self.env.setup({"base_word": "apple"})
+
+    async def reward(self):
+        return (await WordleGrader().grade(None, [], self.env)).score
+
+    async def test_only_tool_and_hidden_answer(self):
+        self.assertEqual([t.name for t in self.env.tools], ["check_answer"])
+        self.assertEqual(await self.env.inspect(["base_word", "_base_word"]), {})
+
+    async def test_all_six_reward_levels(self):
+        for k in range(1, 7):
+            await self.env.setup({"base_word": "APPLE"})
+            for _ in range(k - 1):
+                _, done = await self.env.step([call("crane")])
+                self.assertFalse(done)
+                self.assertEqual(await self.reward(), 0)
+            outputs, done = await self.env.step([call(" \tApple\n")])
+            self.assertTrue(done)
+            self.assertEqual(outputs[0].output, "🟩🟩🟩🟩🟩")
+            self.assertEqual(self.env.guess_count, k)
+            self.assertEqual(await self.reward(), [1, .9, .8, .7, .6, .5][k - 1])
+
+    async def test_exhaustion_and_late_win(self):
+        for i in range(6):
+            _, done = await self.env.step([call("crane", i)])
+            self.assertEqual(done, i == 5)
+        self.assertEqual(await self.reward(), 0)
+        self.assertEqual(await self.env.check_answer("apple"), "invalid guess")
+        self.assertEqual(await self.env.step([call("apple")]), ([], True))
+        self.assertEqual(self.env.guess_count, 6)
+        self.assertFalse(self.env.solved)
+
+    async def test_invalid_guesses_are_bounded(self):
+        for guess in ["zzzzz", "four", "12345", "ſassy", "a pple", None]:
+            outputs, _ = await self.env.step([call(guess)])
+            self.assertEqual(outputs[0].output, "invalid guess")
+        self.assertEqual(self.env.terminated_reason, "exhausted")
+        self.assertEqual(await self.reward(), 0)
+
+    async def test_malformed_calls_are_bounded(self):
+        for name, arguments in [("check_answer", "not JSON"), ("check_answer", "{}"),
+                                ("check_answer", '[]'), ("check_answer", '{"answer":"apple"}'),
+                                ("teardown", "{}"), ("finish", "{}")]:
+            outputs, _ = await self.env.step([FunctionCall(call_id="x", name=name, arguments=arguments)])
+            self.assertEqual(outputs[0].output, "invalid guess")
+        self.assertEqual(self.env.guess_count, 6)
+        self.assertTrue(self.env.is_terminated)
+
+    async def test_batched_calls_stop_at_win_or_limit(self):
+        outputs, done = await self.env.step([call("crane"), call("apple", 1), call("crane", 2)])
+        self.assertTrue(done)
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(await self.reward(), .9)
+        await self.env.setup({"base_word": "APPLE"})
+        outputs, done = await self.env.step([call("crane", i) for i in range(10)] + [call("apple")])
+        self.assertTrue(done)
+        self.assertEqual(len(outputs), 6)
+        self.assertEqual(await self.reward(), 0)
+
+    async def test_win_is_immutable_and_setup_resets(self):
+        await self.env.check_answer("apple")
+        await self.env.check_answer("crane")
+        self.assertEqual(await self.reward(), 1)
+        await self.env.setup({"base_word": "CRANE"})
+        self.assertEqual(self.env.guess_count, 0)
+        self.assertFalse(self.env.is_terminated)
+        self.assertFalse(self.env.solved)
+        self.assertEqual(await self.env.check_answer("crane"), "🟩🟩🟩🟩🟩")
+
+    async def test_text_is_not_a_winning_submission(self):
+        _, done = await self.env.step([Message(role="assistant", content="APPLE")])
+        self.assertTrue(done)
+        self.assertEqual(await self.reward(), 0)
+
+    async def test_invalid_task_fails(self):
+        for params in [{}, {"base_word": "zzzzz"}, {"base_word": "bad"}]:
+            with self.assertRaises(ValueError):
+                await self.env.setup(params)
+
+
+class DeadlineTests(unittest.TestCase):
+    def test_expired_deadline_stops_remote_run(self):
+        client = Mock()
+        self.assertEqual(monitor(client, "train_test", -1), "deadline")
+        client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+        client.train.get.assert_not_called()
+
+    def test_completion_does_not_stop(self):
+        client = Mock()
+        client.train.get.return_value = SimpleNamespace(status="completed")
+        self.assertEqual(monitor(client, "train_test", float("inf")), "completed")
+        client.train.stop.assert_not_called()
+
+    def test_polling_failure_and_interrupt_stop_run(self):
+        for error in [RuntimeError("connection failed"), KeyboardInterrupt()]:
+            client = Mock()
+            client.train.get.side_effect = error
+            with self.assertRaises(type(error)):
+                monitor(client, "train_test", float("inf"))
+            client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+
+    def test_running_job_reaches_deadline(self):
+        client = Mock()
+        client.train.get.return_value = SimpleNamespace(status="running")
+        with patch("wordle.train.time.monotonic", side_effect=[0, 1, 61]), \
+             patch("wordle.train.time.sleep"):
+            self.assertEqual(monitor(client, "train_test", 60), "deadline")
+        client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+
+
+if __name__ == "__main__":
+    unittest.main()

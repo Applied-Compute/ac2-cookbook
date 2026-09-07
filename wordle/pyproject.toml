@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wordle"
+version = "0.1.0"
+description = "Train Qwen3-4B to play Wordle with AC2."
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["ac2>=0.3.38"]
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wordle"]
+
+[[tool.uv.index]]
+name = "ac2"
+url = "https://api.appliedcompute.com/v1/pypi/simple/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+default = true
+
+[tool.uv.sources]
+ac2 = { index = "ac2" }
+
+[tool.ac2]
