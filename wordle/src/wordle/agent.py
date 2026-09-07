@@ -12,16 +12,25 @@ Guesses must be five ASCII letters and in the dictionary. Surrounding whitespace
 is stripped and lowercase is accepted. Invalid guesses return "invalid guess".
 You have six attempts, including invalid submissions. A correct guess ends the
 game immediately. A win on attempt k earns (11-k)/10; losing earns zero.
-Keep reasoning brief. Submit your answer with the tool, not as plain text."""
+On every turn, call check_answer exactly once. Continue guessing until the game
+ends. Output only the tool call; do not write explanations or a final message."""
+
+
+EVAL_MODEL = os.environ.get("WORDLE_EVAL_MODEL", "Qwen/Qwen3-4B")
 
 
 class WordleAgent(Agent):
     description = "Plays Wordle using only check_answer."
     model_configuration = ModelConfiguration(
-        model=os.environ.get("WORDLE_EVAL_MODEL", "Qwen/Qwen3-4B"), api_type="completions",
+        model=EVAL_MODEL, api_type="completions",
         base_url=os.environ.get("WORDLE_EVAL_BASE_URL"),
         api_key_env=os.environ.get("WORDLE_EVAL_API_KEY_ENV"),
-        kwargs={"max_tokens": 4096, "temperature": 1.0},
+        kwargs={
+            "max_tokens": 4096, "temperature": 1.0,
+            # Qwen's thinking otherwise consumes the budget before six guesses.
+            **({"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}}
+               if "qwen3" in EVAL_MODEL.lower() else {}),
+        },
     )
     allowed_tools = ["check_answer"]
     system_prompt = SYSTEM_PROMPT

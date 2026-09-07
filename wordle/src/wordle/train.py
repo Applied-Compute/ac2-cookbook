@@ -27,13 +27,16 @@ CONFIG = TrainingConfig(
     gpu_type="b200",
     eval_mode="off",
     eval_before_train=False,
+    # Training replaces the agent's completion client, so its eval kwargs do
+    # not apply here. This budget covers the entire game, including tool turns.
+    apply_chat_template_kwargs={"enable_thinking": False},
     max_response_len=4096,
     max_total_len=8192,
     rollout_sample_timeout=180,
     global_sampling_concurrency=32,
     keep_last_checkpoints=1,
     extra_train_args={"save_interval": 5},
-    name="wordle-qwen3-4b-modal-smoke",
+    name="wordle-qwen3-4b-modal-no-thinking",
 )
 
 TERMINAL_STATUSES = {"completed", "succeeded", "failed", "cancelled", "canceled", "stopped"}

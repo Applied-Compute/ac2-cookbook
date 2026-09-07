@@ -3,14 +3,17 @@ import json
 import unittest
 from collections import Counter
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from ac2.runtime import FunctionCall, Message
+from ac2.runtime.completions.client import CompletionClient
 
+from wordle.agent import WordleAgent
+from wordle.audit import audit
 from wordle.dataset import EVAL_DATASET, TRAIN_DATASET, build_datasets
 from wordle.environment import WordleEnvironment
 from wordle.grader import WordleGrader
-from wordle.train import monitor
+from wordle.train import CONFIG, monitor
 from wordle.words import GREEN, WHITE, YELLOW, dictionary, normalize_word, score_guess
 
 
@@ -181,7 +184,45 @@ class DeadlineTests(unittest.TestCase):
         with patch("wordle.train.time.monotonic", side_effect=[0, 1, 61]), \
              patch("wordle.train.time.sleep"):
             self.assertEqual(monitor(client, "train_test", 60), "deadline")
-        client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+            client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+
+
+class SamplingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_eval_and_training_disable_thinking_at_their_api_boundaries(self):
+        # Training uses its own client; agent kwargs alone do not affect it.
+        payload = CONFIG.to_payload(train_tasks=[], eval_tasks=[],
+                                    training_agent_names=["WordleAgent"])
+        self.assertEqual(payload["apply_chat_template_kwargs"], {"enable_thinking": False})
+        client = CompletionClient(WordleAgent.model_configuration)
+        client._adapter = Mock(complete=AsyncMock())
+        await client.complete([Message(role="user", content="Make a guess.")])
+        sent = client._adapter.complete.call_args.kwargs
+        self.assertEqual(sent["extra_body"]["chat_template_kwargs"],
+                         payload["apply_chat_template_kwargs"])
+
+
+class AuditTests(unittest.TestCase):
+    @staticmethod
+    def trace(reason, guesses, solved=False, error=""):
+        return {"scores": [{"grader_name": "WordleGrader", "score": 0,
+                            "artifacts": json.dumps({"terminated_reason": reason,
+                                                     "guesses": guesses, "solved": solved})}],
+                "spans": [{"error_message": error}]}
+
+    def test_completed_loss_passes_but_partial_games_do_not(self):
+        complete = [self.trace("exhausted", 6), self.trace("correct", 2, True)]
+        self.assertTrue(audit(complete)["passed"])
+        result = audit(complete + [self.trace("", 3, error="SGLang returned finish_reason=length"),
+                                   self.trace("abandoned", 4), {"scores": []}])
+        self.assertEqual(result["completed"], 2)
+        self.assertEqual(result["token_limit_hits"], 1)
+        self.assertEqual(result["completion_rate"], .4)
+        self.assertFalse(result["passed"])
+
+    def test_empty_export_and_inconsistent_terminal_state_fail(self):
+        self.assertFalse(audit([])["passed"])
+        self.assertFalse(audit([self.trace("exhausted", 2)])["passed"])
+        self.assertFalse(audit([self.trace("correct", 0, True)])["passed"])
 
 
 if __name__ == "__main__":

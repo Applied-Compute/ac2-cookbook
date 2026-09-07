@@ -40,7 +40,7 @@ on the default dispatch cluster, which lives until the eval ends. Training uses
 Modal; AC2's `EvalServe` currently requires the dispatch backend.
 
 ```bash
-uv run python -m wordle.eval --local --model INFERENCE_MODEL
+uv run python -m wordle.eval --local --model INFERENCE_MODEL --num-tasks 8
 uv run python -m wordle.eval
 uv run python -m wordle.train --dry-run
 uv run python -m wordle.train
@@ -48,10 +48,18 @@ uv run python -m wordle.train
 
 Training uses Modal B200s, four training and four inference replicas, 10 GRPO
 steps, eight words per batch, and four samples per word. Training-time eval is
-off for this small run. AC2 builds and uploads the project before submitting;
+off for this small run. Qwen3 thinking is disabled in both eval and training;
+the 4,096-token training response budget is shared across the whole game.
+AC2 builds and uploads the project before submitting;
 commit and push your branch first to make the source easy to reproduce. Qwen3-4B
 weights must be available to the Modal backend. Training uses AC2 credentials
 and requires no external model-provider key.
+
+The remote smoke eval uses 32 held-out words. Check game completion as well as
+reward: zero reward can mean either a completed loss or an unfinished rollout.
+After exporting traces with `client.traces.download(EVAL_ID, dest="runs/eval.jsonl")`,
+run `uv run python -m wordle.audit runs/eval.jsonl`. It exits nonzero for token
+limit errors, unfinished games, early abandonment, or missing grades.
 
 **Keep the training launcher running.** It monitors the job and requests a stop
 after 55 minutes including submission/startup, leaving five minutes for shutdown.

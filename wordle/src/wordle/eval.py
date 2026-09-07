@@ -8,7 +8,8 @@ from .dataset import EVAL_DATASET, PROJECT, build_datasets
 
 
 async def main(*, local: bool = False, model: str | None = None,
-               base_url: str | None = None, api_key_env: str | None = None) -> None:
+               base_url: str | None = None, api_key_env: str | None = None,
+               num_tasks: int = 32) -> None:
     if os.environ.get("AC2_MODE") != "prod":
         raise SystemExit("Set AC2_MODE=prod before evaluating.")
     if not local and (base_url or api_key_env):
@@ -24,8 +25,8 @@ async def main(*, local: bool = False, model: str | None = None,
     config = EvalConfig(
         agent="WordleAgent", env="WordleEnvironment", grader="WordleGrader",
         num_samples=1, max_parallel=4, on_error="raise",
-        **({"tasks": build_datasets()[EVAL_DATASET][:8]} if local else {
-            "dataset": DatasetSource(dataset=EVAL_DATASET, num_tasks=8),
+        **({"tasks": build_datasets()[EVAL_DATASET][:num_tasks]} if local else {
+            "dataset": DatasetSource(dataset=EVAL_DATASET, num_tasks=num_tasks),
             "serve": EvalServe(
                 model=model or "Qwen/Qwen3-4B", num_gpus=1,
                 args={"tool-call-parser": "hermes", "reasoning-parser": "qwen3"},
@@ -42,6 +43,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", help="Optional inference model or AC2 endpoint for the smoke eval.")
     parser.add_argument("--base-url", help="OpenAI-compatible inference API URL.")
     parser.add_argument("--api-key-env", help="Environment variable containing the inference API key.")
+    parser.add_argument("--num-tasks", type=int, default=32, choices=range(1, 257),
+                        metavar="1-256", help="Number of held-out words (default: 32).")
     args = parser.parse_args()
     asyncio.run(main(local=args.local, model=args.model,
-                     base_url=args.base_url, api_key_env=args.api_key_env))
+                     base_url=args.base_url, api_key_env=args.api_key_env,
+                     num_tasks=args.num_tasks))
