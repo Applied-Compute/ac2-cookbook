@@ -36,7 +36,9 @@ CONFIG = TrainingConfig(
     rollout_sample_timeout=600,
     global_sampling_concurrency=32,
     keep_last_checkpoints=1,
-    extra_train_args={"save_interval": 5},
+    # Keep each training replica on one B200. Automatic context parallelism
+    # otherwise multiplies GPU allocation when the episode budget increases.
+    extra_train_args={"save_interval": 5, "context_parallel_size": 1},
     name="wordle-qwen3-4b-modal-thinking",
 )
 

@@ -50,7 +50,8 @@ uv run python -m wordle.train
 ```
 
 Training uses Modal B200s, four training and four inference replicas, 10 GRPO
-steps, eight words per batch, and four samples per word. Training-time eval is
+steps, eight words per batch, and four samples per word. Context parallelism is
+explicitly set to one to keep the allocation at eight GPUs. Training-time eval is
 off for this small run. Qwen3 thinking is enabled in both eval and training.
 Training allows 24,576 response tokens across the whole game, a total context
 of 32,768 tokens, and up to 600 seconds per rollout. Eval allows 8,192 output

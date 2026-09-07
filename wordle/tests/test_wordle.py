@@ -196,6 +196,7 @@ class SamplingTests(unittest.IsolatedAsyncioTestCase):
         payload = CONFIG.to_payload(train_tasks=[], eval_tasks=[],
                                     training_agent_names=["WordleAgent"])
         self.assertEqual(payload["apply_chat_template_kwargs"], {"enable_thinking": True})
+        self.assertEqual(payload["extra_train_args"]["context_parallel_size"], 1)
         client = CompletionClient(WordleAgent.model_configuration)
         client._adapter = Mock(complete=AsyncMock())
         await client.complete([Message(role="user", content="Make a guess.")])
