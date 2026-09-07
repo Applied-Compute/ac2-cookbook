@@ -28,6 +28,7 @@ async def main(*, local: bool = False, model: str | None = None,
             "dataset": DatasetSource(dataset=EVAL_DATASET, num_tasks=8),
             "serve": EvalServe(
                 model=model or "Qwen/Qwen3-4B", num_gpus=1,
+                args={"tool-call-parser": "hermes", "reasoning-parser": "qwen3"},
             ),
         }),
     )
