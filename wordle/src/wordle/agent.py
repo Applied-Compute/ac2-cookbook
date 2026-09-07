@@ -21,7 +21,7 @@ class WordleAgent(Agent):
         model=os.environ.get("WORDLE_EVAL_MODEL", "Qwen/Qwen3-4B"), api_type="completions",
         base_url=os.environ.get("WORDLE_EVAL_BASE_URL"),
         api_key_env=os.environ.get("WORDLE_EVAL_API_KEY_ENV"),
-        kwargs={"max_tokens": 1024, "temperature": 1.0},
+        kwargs={"max_tokens": 4096, "temperature": 1.0},
     )
     allowed_tools = ["check_answer"]
     system_prompt = SYSTEM_PROMPT
