@@ -14,8 +14,9 @@ You have six attempts, including invalid submissions. A correct guess ends the
 game immediately. A win on attempt k earns (11-k)/10; losing earns zero.
 Use the feedback to choose a new word; do not repeat failed guesses. Keep your
 reasoning focused, then call check_answer exactly once. Continue until the game
-ends. Submit guesses through the tool and do not end with a final text answer.
-Wrap every tool call in <tool_call> and </tool_call> tags. For example:
+ends. Submit guesses through the tool and do not end with a final text answer."""
+
+JSON_TOOL_PROMPT = """Wrap every tool call in <tool_call> and </tool_call> tags. For example:
 <tool_call>
 {"name": "check_answer", "arguments": {"guess": "crane"}}
 </tool_call>
@@ -38,4 +39,24 @@ class WordleAgent(Agent):
         },
     )
     allowed_tools = ["check_answer"]
-    system_prompt = SYSTEM_PROMPT
+    system_prompt = SYSTEM_PROMPT + "\n" + JSON_TOOL_PROMPT
+
+
+class WordleQwen36Agent(WordleAgent):
+    """Use the XML calls required by Qwen3.6's qwen3_coder parser."""
+
+    model_configuration = ModelConfiguration(
+        model="Qwen/Qwen3.6-35B-A3B", api_type="completions",
+        kwargs={"max_tokens": 8192, "temperature": 1.0,
+                "extra_body": {"chat_template_kwargs": {"enable_thinking": True}}},
+    )
+    system_prompt = SYSTEM_PROMPT + """
+Wrap every tool call in the model's XML function format. For example:
+<tool_call>
+<function=check_answer>
+<parameter=guess>
+crane
+</parameter>
+</function>
+</tool_call>
+Use that format with your chosen word on every turn."""

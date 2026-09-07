@@ -5,6 +5,7 @@ import json
 import os
 import time
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ac2.sdk import Client, TrainingConfig
@@ -86,10 +87,17 @@ def monitor(client: Client, train_id: str, deadline: float, *, expected_evals: i
         return "deadline"
     finally:
         if not terminal:
-            client.train.stop(train_id, stop_evals=True)
+            # Keep the watchdog alive if the stop endpoint is briefly unavailable.
+            while True:
+                try:
+                    client.train.stop(train_id, stop_evals=True)
+                    break
+                except Exception as error:
+                    print(f"Stop request failed ({type(error).__name__}); retrying.", flush=True)
+                    time.sleep(15)
 
 
-def main() -> None:
+def main(config: TrainingConfig = CONFIG, *, verify_run=None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-minutes", type=float, default=55,
                         help="Submission-to-stop budget, at most 55 minutes (leaves shutdown time).")
@@ -98,25 +106,32 @@ def main() -> None:
     if not 0 < args.max_minutes <= 55:
         parser.error("--max-minutes must be greater than zero and at most 55")
     if args.dry_run:
-        print(json.dumps(asdict(CONFIG), indent=2))
+        print(json.dumps(asdict(config), indent=2))
         return
     if os.environ.get("AC2_MODE") != "prod":
         raise SystemExit("Set AC2_MODE=prod before launching training.")
     client = Client(project=PROJECT)
+    submitted_at = time.time()
     deadline = time.monotonic() + args.max_minutes * 60
-    run = client.train.run(CONFIG)
+    run = client.train.run(config)
     print(f"Training ID: {run.train_id}", flush=True)
     try:
         output = Path("runs") / run.train_id
         output.mkdir(parents=True, exist_ok=True)
         (output / "submission.json").write_text(json.dumps({
             "train_id": run.train_id, "project": PROJECT,
-            "config": asdict(CONFIG), "max_minutes": args.max_minutes,
+            "config": asdict(config), "max_minutes": args.max_minutes,
+            "submitted_at": datetime.fromtimestamp(submitted_at, timezone.utc).isoformat(),
+            "stop_at": datetime.fromtimestamp(submitted_at + args.max_minutes * 60,
+                                              timezone.utc).isoformat(),
+            "watchdog_pid": os.getpid(),
         }, indent=2) + "\n")
+        if verify_run is not None:
+            verify_run(client, run.train_id, output)
     except BaseException:
         client.train.stop(run.train_id, stop_evals=True)
         raise
-    expected_evals = 1 + (CONFIG.num_train_steps + CONFIG.eval_interval - 1) // CONFIG.eval_interval
+    expected_evals = 1 + (config.num_train_steps + config.eval_interval - 1) // config.eval_interval
     status = monitor(client, run.train_id, deadline, expected_evals=expected_evals)
     print(f"Final status: {status}", flush=True)
     if status not in {"completed", "succeeded"}:

@@ -49,6 +49,21 @@ uv run python -m wordle.train --dry-run
 uv run python -m wordle.train
 ```
 
+For **Qwen3.6-35B-A3B** on the same datasets and training schedule:
+
+```bash
+uv run python -m wordle.train_qwen36 --dry-run
+uv run python -m wordle.train_qwen36
+```
+
+This uses one eight-B200 node: a four-GPU training replica (TP4, EP4, CP1)
+and two two-GPU inference replicas. Optimizer state is offloaded to CPU.
+Each checkpoint eval uses two additional B200s. The Qwen3.6 agent uses its
+native XML function-call format with thinking enabled. The launcher verifies
+the submitted allocation and stops the run if it differs. The same 55-minute
+deadline covers submission, startup, training, and attached evaluations.
+Keep the launcher running; its PID and absolute deadline are saved with the run.
+
 Training uses Modal B200s, four training and four inference replicas, 40 GRPO
 steps, eight words per batch, and four samples per word. Context parallelism is
 explicitly set to one to keep the training allocation at eight GPUs. A baseline

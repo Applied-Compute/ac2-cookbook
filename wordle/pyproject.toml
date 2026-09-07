@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "wordle"
 version = "0.1.0"
-description = "Train Qwen3-4B to play Wordle with AC2."
+description = "Train Qwen models to play Wordle with AC2."
 requires-python = ">=3.12"
 dependencies = []
 
