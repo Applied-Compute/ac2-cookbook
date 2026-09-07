@@ -67,3 +67,7 @@ ac2 train logs TRAIN_ID
 ac2 train checkpoints TRAIN_ID
 ac2 train stop TRAIN_ID
 ```
+
+Modal saves the final checkpoint under `/data/ac2/wordle/TRAIN_ID/iter_0000009`
+on its persistent data volume. The checkpoint-list API may return an empty list
+for Modal runs; verify the volume files before relying on that list.
