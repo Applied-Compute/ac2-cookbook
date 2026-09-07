@@ -189,6 +189,35 @@ class DeadlineTests(unittest.TestCase):
             self.assertEqual(monitor(client, "train_test", 60), "deadline")
             client.train.stop.assert_called_once_with("train_test", stop_evals=True)
 
+    def test_completed_training_waits_for_evals_under_the_same_deadline(self):
+        client = Mock()
+        client.train.get.return_value = SimpleNamespace(status="succeeded", job_id="job_train")
+        client.jobs.list.return_value = [SimpleNamespace(id="job_eval", state="running")]
+        with patch("wordle.train.time.monotonic", side_effect=[0, 1, 61]), \
+             patch("wordle.train.time.sleep"):
+            self.assertEqual(monitor(client, "train_test", 60, expected_evals=1), "deadline")
+        client.jobs.list.assert_called_once_with(parent_job_id="job_train", limit=100)
+        client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+
+    def test_eval_completion_failure_and_missing_dispatch(self):
+        for states, expected in [(["succeeded", "succeeded"], "succeeded"),
+                                 (["succeeded", "failed"], "eval_failed"),
+                                 (["succeeded"], "eval_missing")]:
+            with self.subTest(states=states):
+                client = Mock()
+                client.train.get.return_value = SimpleNamespace(status="succeeded", job_id="job_train")
+                client.jobs.list.return_value = [
+                    SimpleNamespace(id=f"eval_{i}", state=state) for i, state in enumerate(states)
+                ]
+                self.assertEqual(monitor(client, "train_test", float("inf"), expected_evals=2), expected)
+                client.train.stop.assert_not_called()
+
+    def test_failed_training_stops_attached_evals(self):
+        client = Mock()
+        client.train.get.return_value = SimpleNamespace(status="failed")
+        self.assertEqual(monitor(client, "train_test", float("inf"), expected_evals=9), "failed")
+        client.train.stop.assert_called_once_with("train_test", stop_evals=True)
+
 
 class SamplingTests(unittest.IsolatedAsyncioTestCase):
     async def test_eval_and_training_preserve_thinking_at_their_api_boundaries(self):

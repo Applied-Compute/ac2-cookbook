@@ -9,13 +9,13 @@ from pathlib import Path
 
 from ac2.sdk import Client, TrainingConfig
 
-from .dataset import PROJECT, TRAIN_DATASET
+from .dataset import EVAL_DATASET, PROJECT, TRAIN_DATASET
 
 CONFIG = TrainingConfig(
     model="Qwen/Qwen3-4B",
     n_training_replicas=4,
     n_inference_replicas=4,
-    num_train_steps=10,
+    num_train_steps=40,
     samples_per_problem=4,
     problem_batch_size=8,
     ac2_agent="WordleAgent",
@@ -23,11 +23,16 @@ CONFIG = TrainingConfig(
     ac2_grader="WordleGrader",
     ac2_user="WordleUser",
     ac2_train_dataset=TRAIN_DATASET,
+    ac2_eval_dataset=EVAL_DATASET,
     training_agent_names=["WordleAgent"],
     backend="modal",
     gpu_type="b200",
-    eval_mode="off",
-    eval_before_train=False,
+    eval_mode="sidecar",
+    eval_before_train=True,
+    eval_interval=5,
+    eval_samples_per_problem=1,
+    n_eval_replicas=1,
+    eval_global_sampling_concurrency=32,
     # Training replaces the agent's completion client, so its eval kwargs do
     # not apply here. This budget covers the entire game, including tool turns.
     apply_chat_template_kwargs={"enable_thinking": True},
@@ -35,20 +40,23 @@ CONFIG = TrainingConfig(
     max_total_len=32768,
     rollout_sample_timeout=600,
     global_sampling_concurrency=32,
-    keep_last_checkpoints=1,
+    # Eval sidecars may still be queued when later checkpoints are saved.
+    keep_last_checkpoints=8,
     # Keep each training replica on one B200. Automatic context parallelism
     # otherwise multiplies GPU allocation when the episode budget increases.
     extra_train_args={"save_interval": 5, "context_parallel_size": 1},
-    name="wordle-qwen3-4b-modal-thinking",
+    name="wordle-qwen3-4b-modal-40steps-eval5",
 )
 
 TERMINAL_STATUSES = {"completed", "succeeded", "failed", "cancelled", "canceled", "stopped"}
+SUCCESS_STATUSES = {"completed", "succeeded"}
 
 
-def monitor(client: Client, train_id: str, deadline: float) -> str:
-    """Keep the launcher alive; stop on deadline, errors, or interruption."""
+def monitor(client: Client, train_id: str, deadline: float, *, expected_evals: int = 0) -> str:
+    """Keep training and attached evals within the same wall-clock budget."""
     terminal = False
     last_status = None
+    last_evals = None
     try:
         while time.monotonic() < deadline:
             run = client.train.get(train_id)
@@ -57,8 +65,22 @@ def monitor(client: Client, train_id: str, deadline: float) -> str:
                 print(f"{train_id}: {status}", flush=True)
                 last_status = status
             if status in TERMINAL_STATUSES:
-                terminal = True
-                return status
+                if not expected_evals:
+                    terminal = True
+                    return status
+                if status not in SUCCESS_STATUSES:
+                    return status  # Stop any attached evals in finally.
+                children = list(client.jobs.list(parent_job_id=run.job_id, limit=100))
+                eval_states = {job.id: job.state.lower() for job in children}
+                if eval_states != last_evals:
+                    print(f"Attached evals: {json.dumps(eval_states, sort_keys=True)}", flush=True)
+                    last_evals = eval_states
+                if all(state in TERMINAL_STATUSES for state in eval_states.values()):
+                    terminal = True
+                    if len(eval_states) != expected_evals:
+                        print(f"Expected {expected_evals} evals, found {len(eval_states)}.", flush=True)
+                        return "eval_missing"
+                    return status if all(s in SUCCESS_STATUSES for s in eval_states.values()) else "eval_failed"
             time.sleep(min(15, max(0, deadline - time.monotonic())))
         print("Wall-clock limit reached; stopping training and attached evals.", flush=True)
         return "deadline"
@@ -94,7 +116,8 @@ def main() -> None:
     except BaseException:
         client.train.stop(run.train_id, stop_evals=True)
         raise
-    status = monitor(client, run.train_id, deadline)
+    expected_evals = 1 + (CONFIG.num_train_steps + CONFIG.eval_interval - 1) // CONFIG.eval_interval
+    status = monitor(client, run.train_id, deadline, expected_evals=expected_evals)
     print(f"Final status: {status}", flush=True)
     if status not in {"completed", "succeeded"}:
         raise SystemExit(1)

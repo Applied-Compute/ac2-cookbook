@@ -49,13 +49,16 @@ uv run python -m wordle.train --dry-run
 uv run python -m wordle.train
 ```
 
-Training uses Modal B200s, four training and four inference replicas, 10 GRPO
+Training uses Modal B200s, four training and four inference replicas, 40 GRPO
 steps, eight words per batch, and four samples per word. Context parallelism is
-explicitly set to one to keep the allocation at eight GPUs. Training-time eval is
-off for this small run. Qwen3 thinking is enabled in both eval and training.
-Training allows 24,576 response tokens across the whole game, a total context
-of 32,768 tokens, and up to 600 seconds per rollout. Eval allows 8,192 output
-tokens per turn.
+explicitly set to one to keep the training allocation at eight GPUs. A baseline
+eval and evals after every five steps each use one additional B200 and the same
+256 held-out words, with one sample per word. All eight training checkpoints
+are retained so queued evals can read them. Qwen3 thinking is enabled in both
+eval and training.
+Training and checkpoint evals allow 24,576 response tokens across the whole
+game, a total context of 32,768 tokens, and up to 600 seconds per rollout.
+Standalone eval allows 8,192 output tokens per turn.
 AC2 builds and uploads the project before submitting;
 commit and push your branch first to make the source easy to reproduce. Qwen3-4B
 weights must be available to the Modal backend. Training uses AC2 credentials
@@ -67,8 +70,9 @@ After exporting traces with `client.traces.download(EVAL_ID, dest="runs/eval.jso
 run `uv run python -m wordle.audit runs/eval.jsonl`. It exits nonzero for token
 limit errors, unfinished games, early abandonment, or missing grades.
 
-**Keep the training launcher running.** It monitors the job and requests a stop
-after 55 minutes including submission/startup, leaving five minutes for shutdown.
+**Keep the training launcher running.** It monitors training and attached evals
+and requests a stop after 55 minutes including submission/startup, leaving five
+minutes for shutdown. The deadline can stop this run before all 40 steps finish.
 It also stops the run on Ctrl-C or a polling error. This is a client-side deadline;
 closing or killing the launcher removes that protection. Use `--max-minutes 20`
 for a shorter budget. Run IDs and submitted configs are saved under `runs/`.
@@ -82,6 +86,6 @@ ac2 train checkpoints TRAIN_ID
 ac2 train stop TRAIN_ID
 ```
 
-Modal saves the final checkpoint under `/data/ac2/wordle/TRAIN_ID/iter_0000009`
+Modal saves the final checkpoint under `/data/ac2/wordle/TRAIN_ID/iter_0000039`
 on its persistent data volume. The checkpoint-list API may return an empty list
 for Modal runs; verify the volume files before relying on that list.
