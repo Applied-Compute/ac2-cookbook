@@ -4,9 +4,7 @@ import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
-
-from .relay import running_relay_id
+from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
 
 async def main() -> None:
@@ -15,6 +13,9 @@ async def main() -> None:
     parser.add_argument("--dataset", default="swebench-opencode-smoke")
     parser.add_argument("--model", default="gpt-5-mini")
     parser.add_argument("--max-parallel", type=int, default=1)
+    parser.add_argument("--backend", choices=["dispatch", "modal"], default="dispatch")
+    parser.add_argument("--num-tasks", type=int)
+    parser.add_argument("--name", default="swebench-opencode")
     args = parser.parse_args()
 
     client = Client(project=args.project)
@@ -22,11 +23,11 @@ async def main() -> None:
         EvalConfig(
             orchestrator="SwebenchOpenCodeOrchestrator",
             grader="SwebenchVerifiedGrader",
-            dataset=args.dataset,
+            dataset=DatasetSource(dataset=args.dataset, num_tasks=args.num_tasks),
             max_parallel=args.max_parallel,
-            name="swebench-opencode",
+            backend=args.backend,
+            name=args.name,
             custom_harness=CustomHarnessConfig(
-                relay_deployment_id=running_relay_id(client),
                 model=ModelConfiguration(
                     model=args.model,
                     kwargs={"max_output_tokens": 32_768},

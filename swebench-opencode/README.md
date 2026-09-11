@@ -91,7 +91,7 @@ ac2 secrets put --key MODAL_TOKEN_SECRET --value <token-secret>
 ```
 
 BYOH is currently in beta. Contact the AC team to enable it for this project.
-We will provision the required model relay and project configuration.
+AC2 automatically provisions the model relay when the job starts.
 
 For evals against an OpenAI model, store the provider key in the project:
 
@@ -119,6 +119,12 @@ AC2 automatically.
 
 ```bash
 uv run python -m swebench_opencode.eval
+```
+
+To run one task with the AC2 eval job hosted on Modal:
+
+```bash
+uv run python -m swebench_opencode.eval --backend modal --num-tasks 1
 ```
 
 ## Run a bounded training smoke test
