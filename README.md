@@ -29,6 +29,8 @@ Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follo
 | [dapo-math-check](dapo-math-check/)         | Datasets, custom user policy, stateful tools, eval, training                           | A focused train/eval starter     |
 | [tau2bench](tau2bench/)                     | Simulated customer user, domain environments, multi-part grader, remote eval, training | A larger benchmark-style starter |
 
+- [geo3k-vlm](geo3k-vlm/): train a catalog VLM on Geometry3K image questions.
+
 ## Bring your own harness examples
 
 Bring your own harness (BYOH) connects an existing agent runtime to AC2 for
