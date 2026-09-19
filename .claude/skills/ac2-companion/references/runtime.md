@@ -312,7 +312,7 @@ Tasks are passed to evals either inline (`tasks=[...]`) or via a dataset uploade
 
 ## Orchestrator: canonical vs. custom
 
-For a conventional single-agent loop, you don't need a custom orchestrator. Name the agent and environment directly in the config:
+For a conventional single-agent loop, you don't need a custom orchestrator. Put the agent instance and environment name directly in the config:
 
 ```python
 config = EvalConfig(agent=AssistantAgent(), env="WeatherEnvironment", ...)
