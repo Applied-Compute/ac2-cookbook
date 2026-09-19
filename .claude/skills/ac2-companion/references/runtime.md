@@ -105,7 +105,7 @@ class MathAgent(Agent):
 config = EvalConfig(agent=MathAgent(model="gpt-5-mini"), env="MathEnvironment", ...)
 ```
 
-Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. This lets multiple runs share one registered class with different runtime configuration — no per-variant subclass required. Environments, graders, and users are still referenced by class name.
+Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. Environments, graders, and users are still referenced by class name.
 
 ## Environment
 

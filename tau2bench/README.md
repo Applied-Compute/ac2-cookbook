@@ -40,9 +40,9 @@ Use `--domain retail` or `--domain telecom` for the other domains. This creates
 uv run python -m tau2bench.eval
 ```
 
-The eval and train configs default to the airline domain. `Tau2Agent` is a
-parameterized component — one registered class serves every domain via
-`Tau2Agent(domain=...)`, paired with the domain's environment:
+The eval and train configs default to the airline domain; pass `--domain` to
+switch. The configs pair `Tau2Agent(domain=...)` with the domain's environment
+and datasets:
 
 | Domain | Environment |
 |---|---|
@@ -57,7 +57,7 @@ uv run python -m tau2bench.eval --domain retail
 ## Submit a training run
 
 ```bash
-uv run python -m tau2bench.train          # add --domain to match the eval
+uv run python -m tau2bench.train          # --domain works here too
 ```
 
 ## Layout
