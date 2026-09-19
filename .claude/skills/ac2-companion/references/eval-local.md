@@ -1,6 +1,6 @@
 # Running an eval locally
 
-Define an `EvalConfig` with component class names and pass it to the SDK:
+Define an `EvalConfig` with component class names (or configured `Agent`/`Orchestrator` instances) and pass it to the SDK:
 
 ```bash
 uv run python -m my_project.eval --local

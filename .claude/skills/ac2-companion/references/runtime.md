@@ -20,7 +20,7 @@ Tracing is automatic: AC2 runtime components (agents, environments, tools, orche
 
 ## Agent
 
-An agent wraps an LLM and produces completions. Its registered name is its Python class name. Put static configuration on the class and use a no-argument constructor only for instance state.
+An agent wraps an LLM and produces completions. Its registered name is its Python class name. Put static configuration on the class; `__init__` kwargs (annotated, all with defaults) become per-run parameters when a config receives an instance instead of the class name.
 
 ```python
 from ac2.runtime import Agent, ModelConfiguration
@@ -88,6 +88,24 @@ class MyAgent(Agent):
 | `on_turn_end(env)` | End of each turn | No-op |
 
 For full control (e.g. replacing `CompletionClient` with a custom integration), subclass `AgentProtocol` instead of `Agent`.
+
+### Parameterized components
+
+`EvalConfig` (`agent`, `orchestrator`, `AgentSet.agent`, `EvalSet.orchestrators`) and `TrainingConfig` (`ac2_agent`, `ac2_orchestrator`) accept a configured instance in place of the class name. AC2 captures the constructor call and re-instantiates the registered class with those arguments on the runner:
+
+```python
+class MathAgent(Agent):
+    description = "Solves math problems."
+
+    def __init__(self, model: str = "gpt-4o-mini", retries: int = 3) -> None:
+        self.model_configuration = ModelConfiguration(model=model)
+        self.retries = retries
+
+
+config = EvalConfig(agent=MathAgent(model="gpt-5-mini"), env="MathEnvironment", ...)
+```
+
+Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. This lets multiple runs share one registered class with different runtime configuration — no per-variant subclass required. Environments, graders, and users are still referenced by class name.
 
 ## Environment
 
@@ -392,7 +410,7 @@ When the user is writing their first agent, walk through this:
 4. **Grader**: reads the final trace (and optionally env state) and emits a score. Substring match for exact answers, `LLMGrader` for judge-style scoring, env-state read for graders that depend on env terminal flags.
 5. **Orchestrator**: nothing to define for single-agent loops — put the agent and environment class names in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
 
-Once these are in place, their exact class names feed into `EvalConfig`, `DeploymentConfig`, and `TrainingConfig`.
+Once these are in place, their exact class names feed into `EvalConfig`, `DeploymentConfig`, and `TrainingConfig` — or pass configured `Agent`/`Orchestrator` instances to the eval/train configs (see Parameterized components).
 
 ## Next
 

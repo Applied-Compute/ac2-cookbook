@@ -1,6 +1,6 @@
 # Submitting a training run
 
-Define a `TrainingConfig` with component class names and pass it to the SDK:
+Define a `TrainingConfig` with component class names (or configured `Agent`/`Orchestrator` instances for `ac2_agent`/`ac2_orchestrator`) and pass it to the SDK:
 
 ```bash
 uv run python -m my_project.train

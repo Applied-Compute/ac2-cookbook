@@ -36,23 +36,28 @@ Use `--domain retail` or `--domain telecom` for the other domains. This creates
 
 ## Run an eval
 
-The eval and train configs default to the airline domain. To switch domains, use
-the matching class names and dataset in those modules:
-
-| Domain | Agent | Environment |
-|---|---|---|
-| airline | `Tau2AirlineAgent` | `AirlineEnvironment` |
-| retail | `Tau2RetailAgent` | `RetailEnvironment` |
-| telecom | `Tau2TelecomAgent` | `TelecomEnvironment` |
-
 ```bash
 uv run python -m tau2bench.eval
+```
+
+The eval and train configs default to the airline domain. `Tau2Agent` is a
+parameterized component — one registered class serves every domain via
+`Tau2Agent(domain=...)`, paired with the domain's environment:
+
+| Domain | Environment |
+|---|---|
+| airline | `AirlineEnvironment` |
+| retail | `RetailEnvironment` |
+| telecom | `TelecomEnvironment` |
+
+```bash
+uv run python -m tau2bench.eval --domain retail
 ```
 
 ## Submit a training run
 
 ```bash
-uv run python -m tau2bench.train
+uv run python -m tau2bench.train          # add --domain to match the eval
 ```
 
 ## Layout
@@ -62,7 +67,7 @@ tau2bench/
 ├── pyproject.toml
 ├── upload_dataset.py
 └── src/tau2bench/
-    ├── agent.py                # named agents for every domain
+    ├── agent.py                # one agent parameterized by domain
     ├── eval.py                 # named EvalConfig + launch
     ├── train.py                # named TrainingConfig + launch
     ├── user.py

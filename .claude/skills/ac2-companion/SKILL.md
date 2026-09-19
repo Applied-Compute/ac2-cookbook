@@ -41,7 +41,7 @@ Do not hide platform or framework mismatches. If a construct from another framew
 
 1. Create an `Agent` (or subclass for custom hooks).
 2. Create an `Environment` (or subclass with `@tool` methods).
-3. Reference their exact class names in `EvalConfig`, `TrainingConfig`, or `DeploymentConfig`.
+3. Reference their exact class names in `EvalConfig`, `TrainingConfig`, or `DeploymentConfig` — or pass configured `Agent`/`Orchestrator` instances to eval/train configs (see `references/runtime.md`).
 4. Pass the config explicitly to the matching `Client` method from the managed project folder.
 
 A complete local interactive loop:

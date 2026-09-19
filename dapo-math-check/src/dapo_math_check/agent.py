@@ -11,8 +11,10 @@ Solve the problem and submit your answer."""
 
 class DapoMathAgent(Agent):
     description = "Math agent with check_answer and finish tools."
-    model_configuration = ModelConfiguration(
-        model="gpt-5-mini",
-        kwargs={"reasoning": {"summary": "detailed"}},
-    )
     system_prompt = SYSTEM_PROMPT
+
+    def __init__(self, model: str = "gpt-5-mini") -> None:
+        self.model_configuration = ModelConfiguration(
+            model=model,
+            kwargs={"reasoning": {"summary": "detailed"}},
+        )
