@@ -20,7 +20,7 @@ Tracing is automatic: AC2 runtime components (agents, environments, tools, orche
 
 ## Agent
 
-An agent wraps an LLM and produces completions. Its registered name is its Python class name. Put static configuration on the class; `__init__` kwargs (annotated, all with defaults) become per-run parameters when a config receives an instance instead of the class name.
+An agent wraps an LLM and produces completions. Its registered name is its Python class name. Put static configuration on the class; `__init__` parameters (annotated, all with defaults) carry per-run configuration — eval and train configs take a configured instance like `AssistantAgent()`.
 
 ```python
 from ac2.runtime import Agent, ModelConfiguration
@@ -89,9 +89,9 @@ class MyAgent(Agent):
 
 For full control (e.g. replacing `CompletionClient` with a custom integration), subclass `AgentProtocol` instead of `Agent`.
 
-### Parameterized components
+### Component constructor parameters
 
-`EvalConfig` (`agent`, `orchestrator`, `AgentSet.agent`, `EvalSet.orchestrators`) and `TrainingConfig` (`ac2_agent`, `ac2_orchestrator`) accept a configured instance in place of the class name. AC2 captures the constructor call and re-instantiates the registered class with those arguments on the runner:
+`EvalConfig` (`agent`, `orchestrator`, `AgentSet.agent`, `EvalSet.orchestrators`) and `TrainingConfig` (`ac2_agent`, `ac2_orchestrator`) take configured instances. AC2 captures the constructor call and re-instantiates the registered class with those arguments on the runner:
 
 ```python
 class MathAgent(Agent):
@@ -105,7 +105,7 @@ class MathAgent(Agent):
 config = EvalConfig(agent=MathAgent(model="gpt-5-mini"), env="MathEnvironment", ...)
 ```
 
-Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. Environments, graders, and users are still referenced by class name.
+Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. Environments, graders, users, and `DeploymentConfig` still take class names.
 
 ## Environment
 
@@ -315,7 +315,7 @@ Tasks are passed to evals either inline (`tasks=[...]`) or via a dataset uploade
 For a conventional single-agent loop, you don't need a custom orchestrator. Name the agent and environment directly in the config:
 
 ```python
-config = EvalConfig(agent="AssistantAgent", env="WeatherEnvironment", ...)
+config = EvalConfig(agent=AssistantAgent(), env="WeatherEnvironment", ...)
 ```
 
 Build a custom orchestrator when the rollout needs multiple agents or custom control flow (judges picking between drafts, voting, fork-and-merge, planner-writer-reviewer chains, etc.).
@@ -408,9 +408,9 @@ When the user is writing their first agent, walk through this:
 2. **Environment**: tools the agent can call, any per-rollout state in `setup(env_params)`. Override `step` only if concurrent tool dispatch is wrong for their case.
 3. **Task / dataset**: each rollout's `input` + `env_params` + `grader_params`. Tasks can be inline for quick experiments, uploaded as a dataset once they stabilize.
 4. **Grader**: reads the final trace (and optionally env state) and emits a score. Substring match for exact answers, `LLMGrader` for judge-style scoring, env-state read for graders that depend on env terminal flags.
-5. **Orchestrator**: nothing to define for single-agent loops — put the agent and environment class names in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
+5. **Orchestrator**: nothing to define for single-agent loops — put the agent instance and environment class name in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
 
-Once these are in place, their exact class names feed into `EvalConfig`, `DeploymentConfig`, and `TrainingConfig` — or pass configured `Agent`/`Orchestrator` instances to the eval/train configs (see Parameterized components).
+Once these are in place, pass configured `Agent`/`Orchestrator` instances to `EvalConfig` and `TrainingConfig`, and class names to `DeploymentConfig` (see Component constructor parameters).
 
 ## Next
 

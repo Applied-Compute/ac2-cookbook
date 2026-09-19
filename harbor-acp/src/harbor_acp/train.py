@@ -4,6 +4,7 @@ import argparse
 
 from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
+from .orchestrator import HarborACPOrchestrator
 from .relay import running_relay_id
 
 
@@ -23,7 +24,7 @@ def main() -> None:
         keep_last_checkpoints=1,
         samples_per_problem=2,
         problem_batch_size=1,
-        ac2_orchestrator="HarborACPOrchestrator",
+        ac2_orchestrator=HarborACPOrchestrator(),
         ac2_grader="HarborRewardGrader",
         ac2_train_dataset=args.dataset,
         custom_harness=TrainingCustomHarnessConfig(

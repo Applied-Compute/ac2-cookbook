@@ -6,6 +6,7 @@ import asyncio
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
+from .orchestrator import HarborACPOrchestrator
 from .relay import running_relay_id
 
 
@@ -19,7 +20,7 @@ async def main() -> None:
     client = Client(project=args.project)
     await client.eval.run(
         EvalConfig(
-            orchestrator="HarborACPOrchestrator",
+            orchestrator=HarborACPOrchestrator(),
             grader="HarborRewardGrader",
             dataset=args.dataset,
             max_parallel=1,

@@ -22,7 +22,6 @@ def train_config(domain: Domain = "airline") -> TrainingConfig:
         ac2_user="Tau2BenchDefaultUser",
         ac2_train_dataset=f"tau2bench-{domain}-train",
         ac2_eval_dataset=f"tau2bench-{domain}-test",
-        training_agent_names=["Tau2Agent"],
     )
 
 

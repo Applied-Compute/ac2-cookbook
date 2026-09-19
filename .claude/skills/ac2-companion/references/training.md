@@ -1,6 +1,6 @@
 # Submitting a training run
 
-Define a `TrainingConfig` with component class names (or configured `Agent`/`Orchestrator` instances for `ac2_agent`/`ac2_orchestrator`) and pass it to the SDK:
+Define a `TrainingConfig` with the configured components and pass it to the SDK:
 
 ```bash
 uv run python -m my_project.train
@@ -22,6 +22,8 @@ print(run.train_id)
 # src/my_project/train.py
 from ac2.sdk import Client, TrainingConfig
 
+from my_project.agent import MyAgent
+
 CONFIG = TrainingConfig(
     model="Qwen/Qwen3-4B",
     n_training_replicas=4,
@@ -29,12 +31,11 @@ CONFIG = TrainingConfig(
     samples_per_problem=4,
     problem_batch_size=8,
     num_train_steps=20,
-    ac2_agent="MyAgent",
+    ac2_agent=MyAgent(),
     ac2_env="MyEnvironment",
     ac2_grader="MyGrader",
     ac2_train_dataset="my-train-dataset",
     ac2_eval_dataset="my-eval-dataset",
-    training_agent_names=["MyAgent"],
     cluster_id="ac-jurassic",
     name="my-train",
 )

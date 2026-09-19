@@ -5,11 +5,13 @@ import asyncio
 
 from ac2.sdk import Client, DatasetSource, EvalConfig
 
+from .agent import RPSAgent
+
 DATASET = "rock-paper-scissors"
 
 
 CONFIG = EvalConfig(
-    agent="RPSAgent",
+    agent=RPSAgent(),
     env="RPSEnvironment",
     grader="WinrateGrader",
     dataset=DatasetSource(dataset=DATASET, num_tasks=1),
