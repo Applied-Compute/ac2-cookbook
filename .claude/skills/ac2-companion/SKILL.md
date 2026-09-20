@@ -41,7 +41,7 @@ Do not hide platform or framework mismatches. If a construct from another framew
 
 1. Create an `Agent` (or subclass for custom hooks).
 2. Create an `Environment` (or subclass with `@tool` methods).
-3. Pass configured `Agent`/`Orchestrator` instances (e.g. `MyAgent(...)`) to `EvalConfig`/`TrainingConfig` and class names to `DeploymentConfig`; `env`, `grader`, and `user` fields take class names (see `references/runtime.md`).
+3. Pass configured component instances (e.g. `MyAgent(...)`, `MyEnvironment()`, `MyGrader()`) to `EvalConfig`/`TrainingConfig`; `DeploymentConfig` takes class names (see `references/runtime.md`).
 4. Pass the config explicitly to the matching `Client` method from the managed project folder.
 
 A complete local interactive loop:

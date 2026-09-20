@@ -152,11 +152,13 @@ Put the dataset name (or `DatasetSource`) in the project's eval or training conf
 from ac2.sdk import DatasetSource, EvalConfig
 
 from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
 
 CONFIG = EvalConfig(
     agent=MyAgent(),
-    env="MyEnvironment",
-    grader="MyGrader",
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset=DatasetSource(dataset="qa-dataset", num_tasks=10),
     num_samples=1,
     max_parallel=4,
@@ -175,8 +177,8 @@ uv run python -m my_project.eval           # dataset required remotely
 CONFIG = TrainingConfig(
     # ... model + replica counts ...
     ac2_agent=MyAgent(),
-    ac2_env="MyEnvironment",
-    ac2_grader="MyGrader",
+    ac2_env=MyEnvironment(),
+    ac2_grader=MyGrader(),
     ac2_train_dataset="my-train-dataset",
     ac2_eval_dataset="my-eval-dataset",
 )

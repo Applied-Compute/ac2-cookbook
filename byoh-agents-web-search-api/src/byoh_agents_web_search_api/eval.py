@@ -6,6 +6,7 @@ import asyncio
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
+from .grader import WebSearchGrader
 from .relay import running_relay_id
 
 
@@ -19,7 +20,7 @@ async def main() -> None:
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            grader="WebSearchGrader",
+            grader=WebSearchGrader(),
             dataset=DatasetSource(dataset=args.dataset, num_tasks=3),
             max_parallel=3,
             name="byoh-agents-web-search-api",

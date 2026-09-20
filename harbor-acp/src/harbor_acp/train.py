@@ -4,6 +4,7 @@ import argparse
 
 from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
+from .grader import HarborRewardGrader
 from .orchestrator import HarborACPOrchestrator
 from .relay import running_relay_id
 
@@ -25,7 +26,7 @@ def main() -> None:
         samples_per_problem=2,
         problem_batch_size=1,
         ac2_orchestrator=HarborACPOrchestrator(),
-        ac2_grader="HarborRewardGrader",
+        ac2_grader=HarborRewardGrader(),
         ac2_train_dataset=args.dataset,
         custom_harness=TrainingCustomHarnessConfig(
             relay_deployment_id=running_relay_id(client),

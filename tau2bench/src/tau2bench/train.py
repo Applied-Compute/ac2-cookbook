@@ -6,6 +6,8 @@ from ac2.sdk import Client, TrainingConfig
 
 from .agent import DOMAIN_ENVIRONMENT, Tau2Agent
 from .dataloader import DOMAINS, Domain
+from .graders import Tau2BenchGrader
+from .user import Tau2BenchDefaultUser
 
 
 def train_config(domain: Domain = "airline") -> TrainingConfig:
@@ -17,9 +19,9 @@ def train_config(domain: Domain = "airline") -> TrainingConfig:
         problem_batch_size=8,
         num_train_steps=20,
         ac2_agent=Tau2Agent(domain=domain),
-        ac2_env=DOMAIN_ENVIRONMENT[domain],
-        ac2_grader="Tau2BenchGrader",
-        ac2_user="Tau2BenchDefaultUser",
+        ac2_env=DOMAIN_ENVIRONMENT[domain](),
+        ac2_grader=Tau2BenchGrader(),
+        ac2_user=Tau2BenchDefaultUser(),
         ac2_train_dataset=f"tau2bench-{domain}-train",
         ac2_eval_dataset=f"tau2bench-{domain}-test",
     )

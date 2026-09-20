@@ -6,6 +6,7 @@ import asyncio
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
+from .grader import SwebenchVerifiedGrader
 from .orchestrator import SwebenchOpenCodeOrchestrator
 from .relay import running_relay_id
 
@@ -22,7 +23,7 @@ async def main() -> None:
     await client.eval.run(
         EvalConfig(
             orchestrator=SwebenchOpenCodeOrchestrator(),
-            grader="SwebenchVerifiedGrader",
+            grader=SwebenchVerifiedGrader(),
             dataset=args.dataset,
             max_parallel=args.max_parallel,
             name="swebench-opencode",

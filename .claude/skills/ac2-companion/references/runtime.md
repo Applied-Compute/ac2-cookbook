@@ -91,7 +91,7 @@ For full control (e.g. replacing `CompletionClient` with a custom integration), 
 
 ### Component constructor parameters
 
-`EvalConfig` (`agent`, `orchestrator`, `AgentSet.agent`, `EvalSet.orchestrators`) and `TrainingConfig` (`ac2_agent`, `ac2_orchestrator`) take configured instances. AC2 captures the constructor call and re-instantiates the registered class with those arguments on the runner:
+`EvalConfig` (`agent`, `orchestrator`, `env`, `grader`, `user`; likewise `AgentSet`/`EvalSet` fields), `TrainingConfig` (`ac2_agent`, `ac2_orchestrator`, `ac2_env`, `ac2_grader`, `ac2_user`), and `GradeRequest.grader` take configured instances. AC2 captures the constructor call and re-instantiates the registered class with those arguments on the runner:
 
 ```python
 class MathAgent(Agent):
@@ -102,10 +102,10 @@ class MathAgent(Agent):
         self.retries = retries
 
 
-config = EvalConfig(agent=MathAgent(model="gpt-5-mini"), env="MathEnvironment", ...)
+config = EvalConfig(agent=MathAgent(model="gpt-5-mini"), env=MathEnvironment(), ...)
 ```
 
-Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. Environments, graders, users, and `DeploymentConfig` still take class names.
+Constructor rules: every parameter needs a type annotation and a default, no `*args`/`**kwargs`, and every value must round-trip through JSON. Only `DeploymentConfig` still takes class names.
 
 ## Environment
 
@@ -408,9 +408,9 @@ When the user is writing their first agent, walk through this:
 2. **Environment**: tools the agent can call, any per-rollout state in `setup(env_params)`. Override `step` only if concurrent tool dispatch is wrong for their case.
 3. **Task / dataset**: each rollout's `input` + `env_params` + `grader_params`. Tasks can be inline for quick experiments, uploaded as a dataset once they stabilize.
 4. **Grader**: reads the final trace (and optionally env state) and emits a score. Substring match for exact answers, `LLMGrader` for judge-style scoring, env-state read for graders that depend on env terminal flags.
-5. **Orchestrator**: nothing to define for single-agent loops — put the agent instance and environment class name in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
+5. **Orchestrator**: nothing to define for single-agent loops — put configured agent and environment instances in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
 
-Once these are in place, pass configured `Agent`/`Orchestrator` instances to `EvalConfig` and `TrainingConfig`, and class names to `DeploymentConfig` (see Component constructor parameters).
+Once these are in place, pass configured component instances to `EvalConfig` and `TrainingConfig`, and class names to `DeploymentConfig` (see Component constructor parameters).
 
 ## Next
 

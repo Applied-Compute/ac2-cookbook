@@ -11,11 +11,13 @@ eval on a cluster.
 from ac2.sdk import Client, EvalConfig
 
 from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
 
 CONFIG = EvalConfig(
     agent=MyAgent(),
-    env="MyEnvironment",
-    grader="MyGrader",
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset="qa-dataset",
     num_samples=1,
     max_parallel=8,

@@ -25,11 +25,13 @@ and the eval-job record still go to the platform.
 from ac2.sdk import Client, EvalConfig
 
 from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
 
 CONFIG = EvalConfig(
     agent=MyAgent(),
-    env="MyEnvironment",
-    grader="MyGrader",
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset="qa-dataset",          # or tasks=[...] for ad-hoc local runs
     num_samples=1,
     max_parallel=4,
@@ -40,9 +42,8 @@ async def main() -> None:
     await Client(project="my-project").eval.run(CONFIG, local=True)
 ```
 
-Pass `agent` + `env`, or `orchestrator` for custom control flow. Agents and
-orchestrators take configured instances; envs, graders, and users take class
-names. Set `dataset` or `tasks` (inline `tasks` are local-only).
+Pass `agent` + `env`, or `orchestrator` for custom control flow — all as
+configured instances. Set `dataset` or `tasks` (inline `tasks` are local-only).
 
 ## Cap dataset size
 
@@ -50,11 +51,13 @@ names. Set `dataset` or `tasks` (inline `tasks` are local-only).
 from ac2.sdk import DatasetSource, EvalConfig
 
 from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
 
 CONFIG = EvalConfig(
     agent=MyAgent(),
-    env="MyEnvironment",
-    grader="MyGrader",
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset=DatasetSource(dataset="qa-dataset", num_tasks=10),
     num_samples=1,
     max_parallel=4,

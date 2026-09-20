@@ -102,7 +102,7 @@ An environment should not own:
 
 ### Orchestrators own control flow
 
-Put an agent class name and environment class name directly in the config for the common single-agent loop. Use `OrchestratorProtocol` only when you need multiple agents, multiple episodes, a judge choosing between drafts, compaction, fork/merge behavior, or custom turn sequencing.
+Put a configured agent instance and environment instance directly in the config for the common single-agent loop. Use `OrchestratorProtocol` only when you need multiple agents, multiple episodes, a judge choosing between drafts, compaction, fork/merge behavior, or custom turn sequencing.
 
 ### Graders own scoring
 

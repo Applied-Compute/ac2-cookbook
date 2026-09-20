@@ -6,6 +6,7 @@ import asyncio
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
+from .grader import HarborRewardGrader
 from .relay import running_relay_id
 
 
@@ -19,7 +20,7 @@ async def main() -> None:
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            grader="HarborRewardGrader",
+            grader=HarborRewardGrader(),
             dataset=DatasetSource(dataset=args.dataset, num_tasks=1),
             max_parallel=1,
             name="byoh-modal-coding-api",

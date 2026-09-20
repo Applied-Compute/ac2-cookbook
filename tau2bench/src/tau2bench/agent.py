@@ -3,11 +3,12 @@ from __future__ import annotations
 from ac2.runtime import Agent, EnvironmentProtocol, Message, ModelConfiguration
 
 from .dataloader import Domain, load_tau2_policy
+from .environments import AirlineEnvironment, RetailEnvironment, TelecomEnvironment
 
-DOMAIN_ENVIRONMENT: dict[Domain, str] = {
-    "airline": "AirlineEnvironment",
-    "retail": "RetailEnvironment",
-    "telecom": "TelecomEnvironment",
+DOMAIN_ENVIRONMENT: dict[Domain, type[EnvironmentProtocol]] = {
+    "airline": AirlineEnvironment,
+    "retail": RetailEnvironment,
+    "telecom": TelecomEnvironment,
 }
 
 

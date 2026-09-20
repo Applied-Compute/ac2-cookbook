@@ -23,6 +23,8 @@ print(run.train_id)
 from ac2.sdk import Client, TrainingConfig
 
 from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
 
 CONFIG = TrainingConfig(
     model="Qwen/Qwen3-4B",
@@ -32,8 +34,8 @@ CONFIG = TrainingConfig(
     problem_batch_size=8,
     num_train_steps=20,
     ac2_agent=MyAgent(),
-    ac2_env="MyEnvironment",
-    ac2_grader="MyGrader",
+    ac2_env=MyEnvironment(),
+    ac2_grader=MyGrader(),
     ac2_train_dataset="my-train-dataset",
     ac2_eval_dataset="my-eval-dataset",
     cluster_id="ac-jurassic",
