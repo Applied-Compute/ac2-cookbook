@@ -1,8 +1,8 @@
 # Running an eval remotely
 
-Remote is the default for `client.eval.run(config)`. AC2 discovers the named
-components, builds the managed project, uploads it, and runs the eval on a
-cluster.
+Remote is the default for `client.eval.run(config)`. AC2 discovers the
+configured components, builds the managed project, uploads it, and runs the
+eval on a cluster.
 
 ## Config module
 
@@ -10,10 +10,14 @@ cluster.
 # src/my_project/eval.py
 from ac2.sdk import Client, EvalConfig
 
+from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
+
 CONFIG = EvalConfig(
-    agent="MyAgent",
-    env="MyEnvironment",
-    grader="MyGrader",
+    agent=MyAgent(),
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset="qa-dataset",
     num_samples=1,
     max_parallel=8,

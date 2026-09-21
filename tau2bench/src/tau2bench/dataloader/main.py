@@ -34,6 +34,7 @@ from ac2.runtime import Message, Task
 
 DOMAINS = ("airline", "retail", "telecom")
 SPLITS = ("train", "test", "base")
+Domain = Literal["airline", "retail", "telecom"]
 Split = Literal["train", "test", "base"]
 
 TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/main/data/tau2/domains"

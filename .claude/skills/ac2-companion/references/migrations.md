@@ -23,7 +23,7 @@ Use this guide before porting code from Claude Agents SDK, OpenAI Agents SDK, Pr
 | User simulator, nudges after plain-text replies, forced tool loops | `User` policy, or orchestrator-level loop | Do not make the environment emit user messages; `Environment.step` returns tool outputs only. |
 | Local eval runner | `EvalConfig` + `client.eval.run(config, local=True)` | Use inline `tasks=[...]` while iterating, or `dataset="..."` once the task set stabilizes. |
 | Remote eval runner | `EvalConfig` + `client.eval.run(config)` | Requires a dataset name; AC2 builds/uploads the project. Inline tasks are local-only. |
-| Hosted training config | `TrainingConfig` + `client.train.run(config)` | Reuses the same named components, grader, and datasets as eval. |
+| Hosted training config | `TrainingConfig` + `client.train.run(config)` | Reuses the same components, grader, and datasets as eval. |
 | Deployment/session endpoint | `DeploymentConfig` + `client.deployments.create(config)` | Use for interactive serving, not for eval-only workflows. |
 
 ## Claude Agents SDK
@@ -102,7 +102,7 @@ An environment should not own:
 
 ### Orchestrators own control flow
 
-Put an agent class name and environment class name directly in the config for the common single-agent loop. Use `OrchestratorProtocol` only when you need multiple agents, multiple episodes, a judge choosing between drafts, compaction, fork/merge behavior, or custom turn sequencing.
+Put a configured agent instance and environment instance directly in the config for the common single-agent loop. Use `OrchestratorProtocol` only when you need multiple agents, multiple episodes, a judge choosing between drafts, compaction, fork/merge behavior, or custom turn sequencing.
 
 ### Graders own scoring
 

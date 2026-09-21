@@ -66,8 +66,9 @@ dapo-math-check/
     └── deploy.py               # named DeploymentConfig + launch
 ```
 
-Edit `src/dapo_math_check/eval.py` and `train.py` to change models, sampling,
-dataset caps (`DatasetSource(..., num_tasks=...)`), or replica counts.
+Pass `--model <name>` to `dapo_math_check.eval` to eval a different model.
+Edit `eval.py` / `train.py` for sampling, dataset caps
+(`DatasetSource(..., num_tasks=...)`), or replica counts.
 
 ## OPSD (self-distillation)
 

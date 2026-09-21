@@ -1,6 +1,6 @@
 # Running an eval locally
 
-Define an `EvalConfig` with component class names and pass it to the SDK:
+Define an `EvalConfig` with the configured components and pass it to the SDK:
 
 ```bash
 uv run python -m my_project.eval --local
@@ -24,10 +24,14 @@ and the eval-job record still go to the platform.
 # src/my_project/eval.py
 from ac2.sdk import Client, EvalConfig
 
+from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
+
 CONFIG = EvalConfig(
-    agent="MyAgent",
-    env="MyEnvironment",
-    grader="MyGrader",
+    agent=MyAgent(),
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset="qa-dataset",          # or tasks=[...] for ad-hoc local runs
     num_samples=1,
     max_parallel=4,
@@ -38,18 +42,22 @@ async def main() -> None:
     await Client(project="my-project").eval.run(CONFIG, local=True)
 ```
 
-Pass `agent` + `env`, or `orchestrator` for custom control flow. Set `dataset`
-or `tasks` (inline `tasks` are local-only).
+Pass `agent` + `env`, or `orchestrator` for custom control flow — all as
+configured instances. Set `dataset` or `tasks` (inline `tasks` are local-only).
 
 ## Cap dataset size
 
 ```python
 from ac2.sdk import DatasetSource, EvalConfig
 
+from my_project.agent import MyAgent
+from my_project.environment import MyEnvironment
+from my_project.grader import MyGrader
+
 CONFIG = EvalConfig(
-    agent="MyAgent",
-    env="MyEnvironment",
-    grader="MyGrader",
+    agent=MyAgent(),
+    env=MyEnvironment(),
+    grader=MyGrader(),
     dataset=DatasetSource(dataset="qa-dataset", num_tasks=10),
     num_samples=1,
     max_parallel=4,

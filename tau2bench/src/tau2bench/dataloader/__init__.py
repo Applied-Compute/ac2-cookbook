@@ -1,6 +1,7 @@
 from tau2bench.dataloader.main import (
     DOMAINS,
     SPLITS,
+    Domain,
     Split,
     load_tau2_db,
     load_tau2_policy,
@@ -11,6 +12,7 @@ from tau2bench.dataloader.main import (
 __all__ = [
     "DOMAINS",
     "SPLITS",
+    "Domain",
     "Split",
     "load_tau2_db",
     "load_tau2_policy",

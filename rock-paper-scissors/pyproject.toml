@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ac2>=0.3.21"]
+dev = ["ac2>=0.3.46"]
 
 [tool.uv]
 package = true
