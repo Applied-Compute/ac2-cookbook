@@ -30,7 +30,7 @@ def main() -> None:
         except DatasetNotFoundError:
             client.datasets.create(name)
         client.datasets.add_tasks(name, tasks=tasks)
-        print(f"{name}: {len(tasks)} tasks from {SOURCE}@{SOURCE_REVISION}/{split}")
+        print(f"{name}: processed {len(tasks)} source rows from {SOURCE}@{SOURCE_REVISION}/{split}")
 
 
 if __name__ == "__main__":

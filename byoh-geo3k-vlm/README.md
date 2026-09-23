@@ -85,9 +85,10 @@ uv run python upload_dataset.py
 uv run python -m byoh_geo3k_vlm.train --cluster YOUR_CLUSTER_ID
 ```
 
-This creates separate datasets with 2,101 training tasks and 300 validation
-tasks, then runs 20 training steps with evaluation every 10 steps. The test
-split remains unused. Add `--backend modal` for a Modal cluster.
+This uploads 2,101 training rows (2,100 unique tasks after deduplication) and
+300 validation tasks into separate datasets, then runs 20 training steps with
+evaluation every 10 steps. The test split remains unused. Add `--backend modal`
+for a Modal cluster.
 
 ## How the harness works
 
