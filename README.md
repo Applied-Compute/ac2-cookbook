@@ -62,6 +62,7 @@ infrastructure, including model relay access.
 | Project                                                               | Lifecycle   | Shows                                                        |
 | --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
 | [swebench-opencode](swebench-opencode/)                               | AC2-managed | A CLI harness, sandbox handoff, and AC2-side grading          |
+| [byoh-geo3k-vlm](byoh-geo3k-vlm/)                                     | AC2-managed | Image inputs, a custom VLM harness, and GRPO training         |
 | [byoh-agents-web-search-api](byoh-agents-web-search-api/)             | Self-hosted | A stateful Harness API with AC2-side grading                  |
 | [byoh-modal-coding-api](byoh-modal-coding-api/)                       | Self-hosted | External execution with customer-side grading                |
 
