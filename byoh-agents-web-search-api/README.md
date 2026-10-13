@@ -91,8 +91,6 @@ uv sync --extra harness
 uv run python upload_dataset.py
 ```
 
-BYOH is currently in beta. Contact the AC team to enable it for this project.
-
 Store the model provider key in the project:
 
 ```bash

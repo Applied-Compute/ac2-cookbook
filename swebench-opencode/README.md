@@ -89,8 +89,6 @@ ac2 secrets put --key MODAL_TOKEN_ID --value <token-id>
 ac2 secrets put --key MODAL_TOKEN_SECRET --value <token-secret>
 ```
 
-BYOH is currently in beta. Contact the AC team to enable it for this project.
-
 For evals against an OpenAI model, store the provider key in the project:
 
 ```bash

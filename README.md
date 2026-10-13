@@ -55,9 +55,6 @@ Read the [BYOH overview](https://docs.appliedcompute.com/platform/custom-harness
 for the vocabulary, architecture, and selection guide before running an
 example.
 
-BYOH is currently in beta. Contact the AC team to enable it for your AC2
-project before running these examples.
-
 | Project                                                               | Lifecycle   | Shows                                                        |
 | --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
 | [swebench-opencode](swebench-opencode/)                               | AC2-managed | A CLI harness, sandbox handoff, and AC2-side grading          |
