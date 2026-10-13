@@ -6,10 +6,9 @@ It is useful when you want to understand the three-endpoint Harness API before
 connecting AC2 to a larger scheduler or sandbox system.
 
 The example runs an OpenAI Agents SDK agent with a Wikipedia search tool. The
-agent loop and tool run in a FastAPI process in your network. AC2 provides an
-OpenAI-compatible model relay. The agent sends model requests to this endpoint;
-AC2 routes them to the model selected for the job and records the trace. AC2
-grades the answer returned by the API.
+agent loop and tool run in a FastAPI process in your network. AC2 connects the
+agent to the model selected for the job, records the trace, and grades the
+answer returned by the API.
 
 ## What this example teaches
 
@@ -93,7 +92,6 @@ uv run python upload_dataset.py
 ```
 
 BYOH is currently in beta. Contact the AC team to enable it for this project.
-We will provision the required model relay and project configuration.
 
 Store the model provider key in the project:
 

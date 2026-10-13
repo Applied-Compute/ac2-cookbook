@@ -8,7 +8,6 @@ from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
 from .grader import SwebenchVerifiedGrader
 from .orchestrator import SwebenchOpenCodeOrchestrator
-from .relay import running_relay_id
 
 
 async def main() -> None:
@@ -28,7 +27,6 @@ async def main() -> None:
             max_parallel=args.max_parallel,
             name="swebench-opencode",
             custom_harness=CustomHarnessConfig(
-                relay_deployment_id=running_relay_id(client),
                 model=ModelConfiguration(
                     model=args.model,
                     kwargs={"max_output_tokens": 32_768},

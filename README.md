@@ -56,8 +56,7 @@ for the vocabulary, architecture, and selection guide before running an
 example.
 
 BYOH is currently in beta. Contact the AC team to enable it for your AC2
-project before running these examples. We will provision the required AC2
-infrastructure, including model relay access.
+project before running these examples.
 
 | Project                                                               | Lifecycle   | Shows                                                        |
 | --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |

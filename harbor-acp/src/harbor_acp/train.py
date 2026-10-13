@@ -6,7 +6,6 @@ from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 from .grader import HarborRewardGrader
 from .orchestrator import HarborACPOrchestrator
-from .relay import running_relay_id
 
 
 def main() -> None:
@@ -28,9 +27,7 @@ def main() -> None:
         ac2_orchestrator=HarborACPOrchestrator(),
         ac2_grader=HarborRewardGrader(),
         ac2_train_dataset=args.dataset,
-        custom_harness=TrainingCustomHarnessConfig(
-            relay_deployment_id=running_relay_id(client),
-        ),
+        custom_harness=TrainingCustomHarnessConfig(),
         training_agent_names=["opencode"],
         eval_before_train=False,
         eval_mode="off",
