@@ -7,7 +7,6 @@ from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
 from .grader import HarborRewardGrader
-from .relay import running_relay_id
 
 
 async def main() -> None:
@@ -25,7 +24,6 @@ async def main() -> None:
             max_parallel=1,
             name="byoh-modal-coding-api",
             custom_harness=CustomHarnessConfig(
-                relay_deployment_id=running_relay_id(client),
                 model=ModelConfiguration(
                     model=args.model,
                     kwargs={"max_output_tokens": 8_192},

@@ -1,11 +1,10 @@
 # OpenCode on SWE-bench with AC2-managed lifecycle
 
 This project runs an unmodified OpenCode harness against AC2. OpenCode owns the
-agent loop and tools inside a Modal sandbox. AC2 provides an OpenAI-compatible
-model relay. OpenCode sends model requests to this endpoint; AC2 routes them to
-the model selected for the job and records the trace. AC2 grades the resulting
-repository with the official SWE-bench harness. The project-defined
-orchestrator runs inside the AC2 job and owns the rollout lifecycle.
+agent loop and tools inside a Modal sandbox. AC2 connects OpenCode to the model
+selected for the job, records the trace, and grades the resulting repository
+with the official SWE-bench harness. The project-defined orchestrator runs
+inside the AC2 job and owns the rollout lifecycle.
 
 The example works for both evals against an API model and reinforcement
 learning with Qwen3-4B.
@@ -32,8 +31,8 @@ or library.
 is the code you implement. Its
 `SwebenchOpenCodeOrchestrator` maps the three lifecycle operations to OpenCode:
 
-- `trigger_rollout` starts the CLI with the relay URL and API key supplied by
-  AC2. The orchestrator generates and returns the rollout ID; AC2 does not
+- `trigger_rollout` starts the CLI with the model endpoint and API key supplied
+  by AC2. The orchestrator generates and returns the rollout ID; AC2 does not
   assign it.
 - `check_status` translates the CLI process state into `RUNNING`, `COMPLETED`,
   or `ERRORED`.
@@ -47,8 +46,8 @@ harness's execution and grading state.
 
 1. AC2 creates `SwebenchOpenCodeEnvironment` for a dataset task.
 2. The environment starts a Modal sandbox from the task's SWE-bench image.
-3. AC2 calls `trigger_rollout`; OpenCode works in the repository and sends model
-   requests through the relay.
+3. AC2 calls `trigger_rollout`; OpenCode works in the repository using the model
+   endpoint supplied by AC2.
 4. AC2 polls `check_status` until the CLI exits.
 5. `fetch_assets` extracts the patch and applies it to a clean grading sandbox.
 6. `SwebenchVerifiedGrader` runs the official tests and returns a binary score.
@@ -67,9 +66,9 @@ harness's execution and grading state.
 ## Adapt it to your harness
 
 Replace the OpenCode command and task-specific sandbox setup with your CLI or
-library. Preserve the three orchestrator methods, pass the relay credentials to
-your model client unchanged, and store everything the grader needs on the
-orchestrator environment during `fetch_assets`.
+library. Preserve the three orchestrator methods, pass the model endpoint and
+API key supplied by AC2 to your model client unchanged, and store everything the
+grader needs on the orchestrator environment during `fetch_assets`.
 
 ## Setup
 
@@ -89,9 +88,6 @@ Add your Modal credentials to the project:
 ac2 secrets put --key MODAL_TOKEN_ID --value <token-id>
 ac2 secrets put --key MODAL_TOKEN_SECRET --value <token-secret>
 ```
-
-BYOH is currently in beta. Contact the AC team to enable it for this project.
-We will provision the required model relay and project configuration.
 
 For evals against an OpenAI model, store the provider key in the project:
 

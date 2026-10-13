@@ -5,7 +5,6 @@ import argparse
 from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 from .grader import HarborRewardGrader
-from .relay import running_relay_id
 
 
 def main() -> None:
@@ -28,9 +27,7 @@ def main() -> None:
             global_sampling_concurrency=2,
             ac2_grader=HarborRewardGrader(),
             ac2_train_dataset=args.dataset,
-            custom_harness=TrainingCustomHarnessConfig(
-                relay_deployment_id=running_relay_id(client),
-            ),
+            custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
             rollout_sample_timeout=1_800,
             name="byoh-modal-coding-api-smoke",

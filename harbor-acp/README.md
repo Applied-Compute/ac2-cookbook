@@ -4,12 +4,10 @@ This project runs Harbor's public
 [`harbor/hello-world@latest`](https://hub.harborframework.com/datasets/harbor/hello-world/latest)
 dataset with OpenCode through Harbor's
 [generic ACP agent runner](https://www.harborframework.com/docs/agents/acp).
-Harbor owns dataset resolution, the task sandbox, agent loop, and verifier; AC2
-provides an OpenAI-compatible model relay. OpenCode sends model requests to
-this endpoint; AC2 routes them to the model selected for the job and records
-the trace. AC2 uses Harbor's verifier reward for eval or training. The
-project-defined orchestrator runs inside the AC2 job and owns the rollout
-lifecycle.
+Harbor owns dataset resolution, the task sandbox, agent loop, and verifier. AC2
+connects OpenCode to the model selected for the job, records the trace, and
+uses Harbor's verifier reward for eval or training. The project-defined
+orchestrator runs inside the AC2 job and owns the rollout lifecycle.
 
 OpenCode is configured with AC2 as an OpenAI-compatible provider, so the same
 harness works with an API model in eval and an AC2-hosted model in training.
@@ -38,9 +36,9 @@ There is no Harness API server or Harness Connector in this deployment model.
 you implement. `HarborACPOrchestrator` maps the lifecycle
 operations to Harbor:
 
-- `trigger_rollout` creates a Harbor job with the relay credentials supplied by
-  AC2. The orchestrator generates and returns the rollout ID; AC2 does not
-  assign it.
+- `trigger_rollout` creates a Harbor job with the model endpoint and API key
+  supplied by AC2. The orchestrator generates and returns the rollout ID; AC2
+  does not assign it.
 - `check_status` translates the Harbor task state into the BYOH status contract.
 - `fetch_assets` stores the completed `TrialResult` for the grader.
 
@@ -48,7 +46,7 @@ operations to Harbor:
 
 1. AC2 loads the Harbor dataset reference from the task's `env_params`.
 2. The job calls `trigger_rollout`, which starts one Harbor task on Modal.
-3. OpenCode sends model requests through the AC2 relay while Harbor manages ACP
+3. OpenCode uses the model endpoint supplied by AC2 while Harbor manages ACP
    messages, shell tools, and the task container.
 4. Harbor runs its bundled verifier.
 5. `fetch_assets` stores the result, and `HarborRewardGrader` returns the
@@ -68,9 +66,9 @@ operations to Harbor:
 ## Adapt it to your harness
 
 Replace the Harbor job construction with your harness's Python or CLI entry
-point. Preserve the three orchestrator methods, pass the relay credentials to
-the model client unchanged, and store the final artifacts or verifier result on
-the environment for your grader.
+point. Preserve the three orchestrator methods, pass the model endpoint and API
+key supplied by AC2 to the model client unchanged, and store the final artifacts
+or verifier result on the environment for your grader.
 
 ## Setup
 
@@ -90,9 +88,6 @@ Add your Modal credentials to the project:
 ac2 secrets put --key MODAL_TOKEN_ID --value <token-id>
 ac2 secrets put --key MODAL_TOKEN_SECRET --value <token-secret>
 ```
-
-BYOH is currently in beta. Contact the AC team to enable it for this project.
-We will provision the required model relay and project configuration.
 
 For evals against an OpenAI model, store the provider key in the project:
 

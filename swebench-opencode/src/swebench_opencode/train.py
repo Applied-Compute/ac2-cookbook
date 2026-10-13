@@ -6,7 +6,6 @@ from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 from .grader import SwebenchVerifiedGrader
 from .orchestrator import SwebenchOpenCodeOrchestrator
-from .relay import running_relay_id
 
 
 def main() -> None:
@@ -32,9 +31,7 @@ def main() -> None:
         ac2_orchestrator=SwebenchOpenCodeOrchestrator(),
         ac2_grader=SwebenchVerifiedGrader(),
         ac2_train_dataset=args.dataset,
-        custom_harness=TrainingCustomHarnessConfig(
-            relay_deployment_id=running_relay_id(client),
-        ),
+        custom_harness=TrainingCustomHarnessConfig(),
         training_agent_names=["opencode"],
         eval_before_train=False,
         eval_mode="off",

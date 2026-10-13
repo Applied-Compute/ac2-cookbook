@@ -8,10 +8,9 @@ the place where the agent itself runs.
 The API starts Harbor's public
 [`harbor/hello-world@latest`](https://hub.harborframework.com/datasets/harbor/hello-world/latest)
 task with OpenCode in a Modal sandbox. Harbor, Modal, the coding agent, and the
-verifier all run in your infrastructure. AC2 provides an OpenAI-compatible
-model relay. The agent sends model requests to this endpoint; AC2 routes them
-to the model selected for the job and records the trace. AC2 accepts the
-verifier reward returned by the API.
+verifier all run in your infrastructure. AC2 connects the agent to the model
+selected for the job, records the trace, and accepts the verifier reward
+returned by the API.
 
 ## What this example teaches
 
@@ -54,7 +53,7 @@ requests to these private HTTP endpoints.
 1. `eval.py` or `train.py` starts an AC2 job for the Harbor task.
 2. The AC2 job sends `/submit` through the Harness Gateway and Connector.
 3. `harness_server.py` starts a Harbor job in Modal.
-4. Harbor launches OpenCode, which calls the AC2 relay for model completions.
+4. Harbor launches OpenCode, which uses the model endpoint supplied by AC2.
 5. Harbor runs the task verifier after the agent finishes.
 6. The Connector reports the terminal status and AC2 requests
    `/collect_outputs`.
@@ -104,9 +103,6 @@ uv sync --extra harness
 uv run modal setup
 uv run python upload_dataset.py
 ```
-
-BYOH is currently in beta. Contact the AC team to enable it for this project.
-We will provision the required model relay and project configuration.
 
 Modal credentials remain on your machine. Store the model provider key
 in the project:
