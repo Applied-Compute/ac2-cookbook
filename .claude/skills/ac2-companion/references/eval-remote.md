@@ -21,7 +21,7 @@ CONFIG = EvalConfig(
     dataset="qa-dataset",
     num_samples=1,
     max_parallel=8,
-    cluster_id="ac-jurassic",   # optional; org default if omitted
+    cluster_id="<cluster-id>",   # optional; org default if omitted
     name="qa-eval",
 )
 
