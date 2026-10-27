@@ -16,11 +16,9 @@ from this directory:
 uv sync
 uv run python build_opsd_dataset.py
 uv run python upload_dataset.py --check
-uv run pytest -q
 ```
 
-Requires Python 3.12+ and AC2 0.3.73+. Tests use mock completions and the real AC2
-rollout loop; they do not call model providers or submit jobs.
+Requires Python 3.12+ and AC2 0.3.73+.
 
 For a new AC2 project, register this folder with `ac2 projects init` before uploading.
 The commands below default to `sales-email-opsd`; use `--project YOUR_PROJECT` on
@@ -162,7 +160,5 @@ keep the generated source file to reproduce the dataset exactly.
 ## Files
 
 Runtime components and config factories live in `src/sales_email_opsd/`. The three
-root scripts generate, build, and upload data. `tests/` covers style edge cases,
-replay boundaries, split leakage, deterministic builds, user lifecycle, configuration,
-upload resumption, and the real AC2 rollout loop with mock model responses. The
-bundled conversations were generated with Claude Sonnet 4.5.
+root scripts generate, build, and upload data. The bundled conversations were
+generated with Claude Sonnet 4.5.

@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ac2>=0.3.73", "pytest>=8", "ruff>=0.11"]
+dev = ["ac2>=0.3.73"]
 
 [tool.uv]
 package = true
@@ -35,13 +35,3 @@ default = true
 ac2 = { index = "ac2" }
 
 [tool.ac2]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-
-[tool.ruff]
-line-length = 110
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]
