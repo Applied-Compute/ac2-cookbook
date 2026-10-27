@@ -7,7 +7,7 @@ from ac2.sdk import Client, DatasetSource, EvalConfig, ModelConfig
 
 from .agent import BASE_MODEL, SalesEmailAgent
 from .dashes import POLICY_VERSION
-from .dataset import DATASETS
+from .dataset import EVAL_DATASET
 from .environment import SalesEmailEnvironment
 from .grader import EmDashGrader
 from .user import ReplaySalesEmailUser, SalesEmailUser
@@ -34,7 +34,7 @@ def eval_config(
         env=SalesEmailEnvironment(),
         grader=EmDashGrader(),
         user=SalesEmailUser() if simulate_user else ReplaySalesEmailUser(),
-        dataset=DatasetSource(dataset=DATASETS["tasks_eval.jsonl"], num_tasks=num_tasks),
+        dataset=DatasetSource(dataset=EVAL_DATASET, num_tasks=num_tasks),
         model=served_model,
         temperature=0.0 if api_model is None else None,
         # Matches training; Qwen3 often thinks past 2048 tokens before it writes the email.

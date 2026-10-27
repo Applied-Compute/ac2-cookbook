@@ -1,9 +1,7 @@
-"""Validated synthetic conversation inputs and deterministic file serialization."""
+"""Validated synthetic conversations bundled with the example."""
 
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 from typing import Literal, Self
 
@@ -56,10 +54,6 @@ class Conversation(BaseModel):
         return self
 
 
-def content_hash(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
 def load_conversations(path: Path) -> list[Conversation]:
     records = []
     ids: set[str] = set()
@@ -82,17 +76,3 @@ def load_conversations(path: Path) -> list[Conversation]:
     if not records:
         raise ValueError(f"No conversations in {path}")
     return sorted(records, key=lambda record: record.conversation_id)
-
-
-def write_jsonl(path: Path, rows: list[BaseModel]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        "".join(
-            json.dumps(row.model_dump(mode="json", exclude_none=True), ensure_ascii=False, sort_keys=True)
-            + "\n"
-            for row in rows
-        ),
-        encoding="utf-8",
-    )
-    temporary.replace(path)

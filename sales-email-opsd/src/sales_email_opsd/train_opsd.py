@@ -6,7 +6,7 @@ from typing import Literal
 from ac2.sdk import Client, DatasetSource, TrainingConfig
 
 from .agent import BASE_MODEL, SalesEmailAgent
-from .dataset import DATASETS
+from .dataset import EVAL_DATASET, ONLINE_TRAIN_DATASET, TRAIN_DATASET
 from .environment import SalesEmailEnvironment
 from .grader import EmDashGrader
 from .hinter import JUDGE_MODEL, SalesEmailJudgeHinter
@@ -32,7 +32,7 @@ def training_config(
     if replay_user and mode != "online":
         raise ValueError("Replayed users require online rollouts")
     online = mode == "online"
-    dataset = DATASETS["tasks_online.jsonl" if online else "tasks_one_step.jsonl"]
+    dataset = ONLINE_TRAIN_DATASET if online else TRAIN_DATASET
     return TrainingConfig(
         model=model,
         method="opsd",
@@ -49,7 +49,7 @@ def training_config(
         ac2_env=SalesEmailEnvironment() if online else None,
         ac2_user=(ReplaySalesEmailUser() if replay_user else SalesEmailUser()) if online else None,
         ac2_grader=EmDashGrader() if online else None,
-        ac2_eval_dataset=DATASETS["tasks_eval.jsonl"] if online else None,
+        ac2_eval_dataset=EVAL_DATASET if online else None,
         judge_model=token_judge if online else None,
         extra_train_args={"rmsd_hinter_path": HINTER_PATH} if online else {},
     )

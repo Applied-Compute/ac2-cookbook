@@ -11,11 +11,9 @@ from .agent import SYSTEM_PROMPT
 from .dashes import POLICY, POLICY_VERSION, find_dashes
 from .data import Conversation
 
-DATASETS = {
-    "tasks_one_step.jsonl": "sales-email-opsd-train-v2",
-    "tasks_online.jsonl": "sales-email-opsd-online-train-v2",
-    "tasks_eval.jsonl": "sales-email-eval-v2",
-}
+TRAIN_DATASET = "sales-email-opsd-train-v2"
+ONLINE_TRAIN_DATASET = "sales-email-opsd-online-train-v2"
+EVAL_DATASET = "sales-email-eval-v2"
 
 
 @dataclass(frozen=True)

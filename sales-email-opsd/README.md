@@ -4,31 +4,22 @@ Teach a sales email assistant to avoid dash punctuation through teacher-only hin
 The student keeps the same MailPilot system prompt. This example isolates a measurable
 style change; it does not establish that the emails are persuasive or factually correct.
 
-The bundled corpus contains **150 synthetic conversations**, not customer production
-traces. You can rebuild all datasets without credentials or model calls.
+`data/traces.jsonl` holds **150 synthetic conversations** generated with Claude
+Sonnet 4.5, not customer production traces.
 
-## Set up and check locally
+## Set up and upload the datasets
 
-Install and authenticate [AC2](https://docs.appliedcompute.com/quickstart), then run
-from this directory:
+Install and authenticate [AC2](https://docs.appliedcompute.com/quickstart). Requires
+Python 3.12+ and AC2 0.3.73+. From this directory:
 
 ```bash
+ac2 projects init
 uv sync
-uv run python build_opsd_dataset.py
-uv run python upload_dataset.py --check
-```
-
-Requires Python 3.12+ and AC2 0.3.73+.
-
-For a new AC2 project, register this folder with `ac2 projects init` before uploading.
-The commands below default to `sales-email-opsd`; use `--project YOUR_PROJECT` on
-upload, eval, train, and deploy commands for your own project.
-
-## Upload the datasets
-
-```bash
 uv run python upload_dataset.py
 ```
+
+The commands below default to `sales-email-opsd`; use `--project YOUR_PROJECT` on
+upload, eval, train, and deploy commands for your own project.
 
 | Dataset | Tasks | Use |
 | --- | ---: | --- |
@@ -36,9 +27,11 @@ uv run python upload_dataset.py
 | `sales-email-opsd-online-train-v2` | 120 | Full conversations with live hints |
 | `sales-email-eval-v2` | 30 | Held-out conversations, with no hints |
 
-The builder validates alternating roles, unique conversation IDs, and disjoint
-opening requests across the split. It selects up to three offending replies per
-training conversation. Each replay task contains the original system prompt, the
+`upload_dataset.py` builds every task from the conversations without model calls
+(`build_tasks` in `dataset.py`). It validates alternating roles, unique conversation
+IDs, and disjoint opening requests across the split, and selects up to three
+offending replies per training conversation. Each replay task contains the original
+system prompt, the
 conversation prefix, and **only the selected assistant reply**. Its hint is a
 `HintSelection` in `grader_params["opsd_hint_selections"]`: the prefix ends before
 that reply, and the hint is appended to the rep's request; future turns are excluded.
@@ -50,10 +43,9 @@ from the live rollout instead: `SalesEmailJudgeHinter` in `hinter.py`, passed to
 training as `rmsd_hinter_path`, picks the first reply that uses dash punctuation,
 quotes up to three offending phrases, and rewrites each one without the dash.
 
-`data/manifest.json` records source and output hashes. Upload validates the files
-against both the manifest and the current builder. Repeating an upload is a no-op;
-an interrupted upload resumes missing tasks. A dataset containing a different
-snapshot causes an error. Choose new names in `dataset.py` for a new experiment.
+Repeating an upload is a no-op, and an interrupted upload resumes missing tasks. If a
+dataset already holds different tasks, the upload stops; choose new names in
+`dataset.py` for a new experiment.
 
 ## Evaluate, train, and compare
 
@@ -139,26 +131,3 @@ score; the subject/body guard is deliberately minimal and is not a semantic qual
 
 In OPSD, this score provides telemetry and evaluation; the learning signal comes
 from the hinted teacher distribution, not from optimizing this score.
-
-## Generate a new corpus (optional)
-
-Bundled data is ready to use. To generate a separate experiment through a provider
-API, set its key in your environment or `.env` and run:
-
-```bash
-uv run python generate_traces.py --data-dir data/new-experiment --model gpt-4.1-2025-04-14
-uv run python build_opsd_dataset.py --data-dir data/new-experiment
-uv run python upload_dataset.py --data-dir data/new-experiment --check
-```
-
-Generation incurs model usage. Train/eval persona seeds are independent, so growing
-the training split does not move the eval split. IDs include the model, prompts,
-seed, and persona; resuming with incompatible settings fails. Completed conversations
-are checkpointed. A fixed seed fixes personas, not stochastic model responses;
-keep the generated source file to reproduce the dataset exactly.
-
-## Files
-
-Runtime components and config factories live in `src/sales_email_opsd/`. The three
-root scripts generate, build, and upload data. The bundled conversations were
-generated with Claude Sonnet 4.5.
