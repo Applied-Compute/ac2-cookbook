@@ -1,0 +1,20 @@
+{
+  "max_boundaries": 3,
+  "outputs": {
+    "tasks_eval.jsonl": {
+      "count": 30,
+      "sha256": "1748f15d9f87ebf429ff665570966603a5852e911e912e9ea19d6a1661630570"
+    },
+    "tasks_one_step.jsonl": {
+      "count": 347,
+      "sha256": "234308f9a876d47e072685a0d14f2b25aa9a1693a44ad4bfa54b30e331ea1555"
+    },
+    "tasks_online.jsonl": {
+      "count": 120,
+      "sha256": "676b476f815631062f7e365444962f7810c1f01aaeff038ff09e4358713b29e6"
+    }
+  },
+  "policy_version": "dash-punctuation-v2",
+  "schema_version": 2,
+  "source_sha256": "17c2c64a6c59f363126b0647a53387d3dec8014c6cf8f85cd6d01385f0e64efd"
+}

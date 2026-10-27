@@ -30,6 +30,7 @@ Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follo
 | [tau2bench](tau2bench/)                     | Simulated customer user, domain environments, multi-part grader, remote eval, training | A larger benchmark-style starter |
 
 - [geo3k-vlm](geo3k-vlm/): train a catalog VLM on Geometry3K image questions.
+- [sales-email-opsd](sales-email-opsd/): teach a sales email agent a style rule with online OPSD hints.
 
 ## Bring your own harness examples
 
