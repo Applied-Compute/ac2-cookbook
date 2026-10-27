@@ -61,7 +61,7 @@ def render_transcript(messages: list[tuple[int, Message]]) -> str:
 
 class SalesEmailJudgeHinter(OnlineHinter):
     def __init__(self, model: str = JUDGE_MODEL) -> None:
-        self.model_configuration = ModelConfiguration(model=model, kwargs={"max_output_tokens": 2048})
+        self.model_configuration = ModelConfiguration(model=model, kwargs={"max_output_tokens": 4096})
 
     async def _select_hints(
         self, task: Task, trace: Trace, grader_output: GraderOutput
