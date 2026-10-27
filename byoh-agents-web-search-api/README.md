@@ -118,7 +118,7 @@ created by `ac2 login`. If the organization does not already have
 connector credentials, an organization admin creates them once:
 
 ```bash
-ac2 harness credentials rotate
+ac2 harness credentials create
 ```
 
 The command prints `AC2_SERVICE_CLIENT_ID` and `AC2_SERVICE_CLIENT_SECRET`. In a
@@ -135,6 +135,24 @@ ac2 harness connect \
 
 Keep both terminals running. The Harness API remains private; only the
 connector makes an outbound connection to AC2.
+
+By default the connector holds one outbound WebSocket to AC2. If your network
+only allows plain HTTPS requests, run it in HTTPS mode instead: it then fetches
+work with a long poll and posts results, and every connection it makes is an
+HTTPS request that returns within `--poll-wait` seconds (30 by default, 120 at
+most). Requires an SDK that lists `--transport` in
+`ac2 harness connect --help`.
+
+```bash
+ac2 harness connect \
+  --project-id <project-id> \
+  --upstream http://127.0.0.1:8000 \
+  --transport https \
+  --poll-wait 30
+```
+
+Stop the connector with Ctrl-C or SIGTERM so it releases the project at once;
+a connector that is killed outright is replaced after about a minute.
 
 > Do not save these values with `ac2 config set` or put them in the project's
 > `.env`. They are only for the Harness Connector process. Normal SDK commands
