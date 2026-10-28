@@ -1,7 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
 from ac2.runtime import Task
-from ac2.sdk.pipelines import PipelineSpec, pipeline, step
+from ac2.sdk.pipelines import PipelineSpec, pipeline, publish_dataset_output, step
+from ac2.sdk.registry.datasets import Dataset
+from pydantic import BaseModel
 
 from data_pipelines.monitor import ScoredConversation, grade_traces
 from data_pipelines.traces import read_traces
@@ -20,6 +22,10 @@ def select_failures(*, results: list[ScoredConversation]) -> list[Task]:
     ]
 
 
+class HourlyTraceFailures(BaseModel):
+    dataset: Dataset
+
+
 @pipeline(
     name="hourly-trace-failures",
     log_prints=True,
@@ -31,10 +37,10 @@ def select_failures(*, results: list[ScoredConversation]) -> list[Task]:
         max_runtime_seconds=900,
     ),
 )
-def hourly_trace_failures(*, project: str = "<project>", source_job_id: str = "<source-job-id>") -> list[Task]:
+def hourly_trace_failures(*, project: str = "<project>", source_job_id: str = "<source-job-id>") -> HourlyTraceFailures:
     end = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
     conversations = read_traces(project=project, source_job_id=source_job_id, start=end - timedelta(hours=1), end=end)
     results = grade_traces(conversations=conversations)
     tasks = select_failures(results=results)
     print(f"Selected {len(tasks)} tasks from {len(results)} eligible conversations")
-    return tasks
+    return HourlyTraceFailures(dataset=publish_dataset_output(tasks=tasks))
