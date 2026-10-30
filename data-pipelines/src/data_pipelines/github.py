@@ -3,7 +3,8 @@ from collections.abc import Sequence
 
 import httpx
 from ac2.runtime import Message, Task
-from ac2.sdk.pipelines import PipelineSpec, pipeline, step
+from ac2.sdk.pipelines import PipelineSpec, pipeline, publish_dataset_output, step
+from ac2.sdk.registry.datasets import Dataset
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
@@ -86,6 +87,10 @@ def make_tasks(*, pull_requests: Sequence[dict[str, str]]) -> list[Task]:
     return tasks
 
 
+class GitHubPRSyntheticDataset(BaseModel):
+    dataset: Dataset
+
+
 @pipeline(
     name="github-pr-synthetic-dataset",
     log_prints=True,
@@ -96,8 +101,8 @@ def make_tasks(*, pull_requests: Sequence[dict[str, str]]) -> list[Task]:
         max_runtime_seconds=3600,
     ),
 )
-def github_pr_synthetic_dataset(*, repository: str = "<owner>/<public-repository>") -> list[Task]:
+def github_pr_synthetic_dataset(*, repository: str = "<owner>/<public-repository>") -> GitHubPRSyntheticDataset:
     pulls = merged_pull_requests(repository=repository)
     tasks = make_tasks(pull_requests=pulls)
     print(f"Created {len(tasks)} tasks from {len(pulls)} merged pull requests")
-    return tasks
+    return GitHubPRSyntheticDataset(dataset=publish_dataset_output(tasks=tasks))
