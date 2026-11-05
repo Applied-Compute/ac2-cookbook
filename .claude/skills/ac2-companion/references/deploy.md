@@ -45,7 +45,7 @@ from ac2.sdk import Client, DeploymentConfig
 CONFIG = DeploymentConfig(
     agent="MyAgent",
     env="MyEnvironment",
-    cluster_id="ac-jurassic",  # optional
+    cluster_id="<cluster-id>",  # optional
     tags={"team": "demo"},     # optional
 )
 
