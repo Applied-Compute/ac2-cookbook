@@ -12,7 +12,6 @@ Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follo
 ```bash
 ac2 project init
 uv sync
-cp .env.example .env   # set OPENAI_API_KEY for local runs
 ```
 
 ## Register datasets
@@ -23,11 +22,7 @@ uv run python upload_dataset.py
 
 ## Run an eval
 
-```bash
-uv run python -m dapo_math_check.eval --local
-```
-
-For remote runs, register your provider key as a secret first:
+Register your provider key as a secret first:
 
 ```bash
 ac2 secrets put --key OPENAI_API_KEY --value <val>
@@ -59,7 +54,7 @@ dapo-math-check/
     ├── user.py
     ├── grader.py
     ├── answer_utils.py
-    ├── eval.py                 # named EvalConfig + local/remote launch
+    ├── eval.py                 # named EvalConfig + launch
     ├── train.py                # named TrainingConfig + launch (GRPO)
     ├── train_opsd.py           # offline / one_step / online OPSD configs
     ├── train_sft.py            # SFT config on the OPSD transcripts

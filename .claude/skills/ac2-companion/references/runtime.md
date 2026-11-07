@@ -308,7 +308,7 @@ task = Task(
 )
 ```
 
-Tasks are passed to evals either inline (`tasks=[...]`) or via a dataset uploaded to the platform (see `eval-local.md` and `eval-remote.md`).
+Tasks are passed to evals via a dataset uploaded to the platform (see `eval-remote.md`).
 
 ## Orchestrator: canonical vs. custom
 
@@ -406,7 +406,7 @@ When the user is writing their first agent, walk through this:
 
 1. **Agent**: subclass with model + system prompt class variables; add hooks only when needed.
 2. **Environment**: tools the agent can call, any per-rollout state in `setup(env_params)`. Override `step` only if concurrent tool dispatch is wrong for their case.
-3. **Task / dataset**: each rollout's `input` + `env_params` + `grader_params`. Tasks can be inline for quick experiments, uploaded as a dataset once they stabilize.
+3. **Task / dataset**: each rollout's `input` + `env_params` + `grader_params`. Tasks are uploaded as a dataset.
 4. **Grader**: reads the final trace (and optionally env state) and emits a score. Substring match for exact answers, `LLMGrader` for judge-style scoring, env-state read for graders that depend on env terminal flags.
 5. **Orchestrator**: nothing to define for single-agent loops — put configured agent and environment instances in the config. Build a custom `OrchestratorProtocol` subclass only for multi-agent or custom-control-flow rollouts.
 
@@ -414,6 +414,6 @@ Once these are in place, pass configured component instances to `EvalConfig` and
 
 ## Next
 
-- Run an eval against these primitives: `references/eval-local.md`.
+- Run an eval against these primitives: `references/eval-remote.md`.
 - Deploy the agent for interactive use: `references/deploy.md`.
 - Train against them: `references/training.md`.

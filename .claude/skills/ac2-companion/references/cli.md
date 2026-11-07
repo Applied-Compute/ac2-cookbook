@@ -24,13 +24,12 @@ Run these from inside a folder with `[tool.ac2]`:
 
 | Command | Description |
 |---------|-------------|
-| `uv run python -m my_project.eval` | Run the project's eval config remotely |
-| `uv run python -m my_project.eval --local` | Run the same eval locally |
+| `uv run python -m my_project.eval` | Run the project's eval config |
 | `uv run python -m my_project.train` | Submit the project's training config |
 | `uv run python -m my_project.deploy` | Submit the project's deployment config |
 
 Launch options belong in `EvalConfig` / `TrainingConfig` / `DeploymentConfig`,
-not as CLI flags (except `--local` for eval).
+not as CLI flags.
 
 ## Listing / inspecting
 

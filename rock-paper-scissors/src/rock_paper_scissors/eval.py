@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 
 from ac2.sdk import Client, DatasetSource, EvalConfig
@@ -22,12 +21,9 @@ CONFIG = EvalConfig(
 )
 
 
-async def main(*, local: bool = False) -> None:
-    await Client(project="rock-paper-scissors").eval.run(CONFIG, local=local)
+async def main() -> None:
+    await Client(project="rock-paper-scissors").eval.run(CONFIG)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--local", action="store_true")
-    args = parser.parse_args()
-    asyncio.run(main(local=args.local))
+    asyncio.run(main())

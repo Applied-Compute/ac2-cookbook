@@ -16,9 +16,10 @@ cd my-agent
 uv sync
 cp .env.example .env   # set OPENAI_API_KEY=...
 
-# 3. Upload the starter dataset and run the eval module.
+# 3. Upload the starter dataset, register your provider key, and run the eval module.
 uv run python upload_dataset.py
-uv run python -m my_agent.eval --local
+ac2 secrets put --key OPENAI_API_KEY --value <val>
+uv run python -m my_agent.eval
 ```
 
 ## Project-based install (`pyproject.toml`)
@@ -100,8 +101,7 @@ from the package before uploading it for remote eval, train, and deploy.
 From inside the project folder:
 
 ```bash
-uv run python -m my_agent.eval              # remote
-uv run python -m my_agent.eval --local
+uv run python -m my_agent.eval
 uv run python -m my_agent.train
 uv run python -m my_agent.deploy
 ac2 project push          # snapshot/upload without launching

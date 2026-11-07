@@ -57,7 +57,6 @@ async def main() -> None:
         description="Evaluate the base model, a checkpoint, or a provider model."
     )
     parser.add_argument("--project", default="sales-email-opsd")
-    parser.add_argument("--local", action="store_true")
     model = parser.add_mutually_exclusive_group()
     model.add_argument("--model", help="AC2 catalog model (default: the training base model)")
     model.add_argument("--checkpoint", help="AC2 checkpoint ID from the training run")
@@ -65,8 +64,6 @@ async def main() -> None:
     parser.add_argument("--num-tasks", type=int)
     parser.add_argument("--simulate-user", action="store_true")
     args = parser.parse_args()
-    if args.local and not args.api_model:
-        parser.error("--local requires --api-model; catalog models and checkpoints run remotely")
     config = eval_config(
         model=args.model,
         checkpoint=args.checkpoint,
@@ -74,7 +71,7 @@ async def main() -> None:
         num_tasks=args.num_tasks,
         simulate_user=args.simulate_user,
     )
-    print(await Client(project=args.project).eval.run(config, local=args.local))
+    print(await Client(project=args.project).eval.run(config))
 
 
 if __name__ == "__main__":

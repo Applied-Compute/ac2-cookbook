@@ -6,9 +6,8 @@ Use this guide before porting code from Claude Agents SDK, OpenAI Agents SDK, Pr
 
 1. Write the source contract down before coding: input messages, system/developer prompts, tools, tool schemas, state, stop conditions, scoring, datasets, and metrics.
 2. Decide which AC2 primitive owns each piece.
-3. Port the smallest runnable slice and run it locally.
-4. Add dataset upload only after inline/local tasks work.
-5. Add remote eval, deployment, or training only after local behavior and grading are stable.
+3. Port the smallest runnable slice and run it in a local session.
+4. Upload a dataset, then add eval, deployment, or training only after local behavior and grading are stable.
 
 ## Concept mapping
 
@@ -21,8 +20,7 @@ Use this guide before porting code from Claude Agents SDK, OpenAI Agents SDK, Pr
 | Reward function, scorer, evaluator, rubric | `Grader` or `LLMGrader` | Deterministic checks should subclass `Grader`; judge-based scoring can subclass `LLMGrader`. |
 | Multi-agent flow, planner/writer/reviewer, judge selection, compaction | `OrchestratorProtocol` | Start episodes with `self.session.start_episode(agent)` and drive turns with `self.session.run_turn(...)`. |
 | User simulator, nudges after plain-text replies, forced tool loops | `User` policy, or orchestrator-level loop | Do not make the environment emit user messages; `Environment.step` returns tool outputs only. |
-| Local eval runner | `EvalConfig` + `client.eval.run(config, local=True)` | Use inline `tasks=[...]` while iterating, or `dataset="..."` once the task set stabilizes. |
-| Remote eval runner | `EvalConfig` + `client.eval.run(config)` | Requires a dataset name; AC2 builds/uploads the project. Inline tasks are local-only. |
+| Eval runner | `EvalConfig` + `client.eval.run(config)` | Requires a dataset name; AC2 builds/uploads the project. Inline tasks are not supported. |
 | Hosted training config | `TrainingConfig` + `client.train.run(config)` | Reuses the same components, grader, and datasets as eval. |
 | Deployment/session endpoint | `DeploymentConfig` + `client.deployments.create(config)` | Use for interactive serving, not for eval-only workflows. |
 
@@ -60,7 +58,7 @@ The closest AC2 mapping is:
 - Verifiers rubric/reward functions -> AC2 `Grader`.
 - `ToolEnv` / `StatefulToolEnv` tools -> AC2 `Environment` with `@tool` methods and `setup(env_params)`.
 - `MultiTurnEnv.env_response(...)` -> usually an AC2 `User` policy or `OrchestratorProtocol` loop.
-- Verifiers eval command -> a runnable module that calls `client.eval.run(config, local=...)`.
+- Verifiers eval command -> a runnable module that calls `client.eval.run(config)`.
 - Prime hosted training config -> AC2 `TrainingConfig`.
 
 Be careful with rollout ownership. In Verifiers, the environment may own more of the conversation loop. In AC2, the environment should not emit user messages. It processes tool calls and returns `FunctionCallOutput` items. Conversation control lives above it.
@@ -115,7 +113,7 @@ Keep reward logic in a `Grader` even if the source framework scored inside the e
 - Per-task data is divided between `Task.input`, `env_params`, and `grader_params`.
 - Stop conditions are assigned to the environment, `User`, or orchestrator intentionally.
 - Scoring returns `GraderOutput(score=..., reasoning=..., artifacts=...)`.
-- Local session or local eval passes before remote runs.
+- A local session passes before remote runs.
 - Remote workflows use a managed project (`ac2 project init`) with exactly one package under `src/` and runtime deps in `[project].dependencies`.
 - Provider secrets are uploaded before remote eval, deployment, or training.
 - Training config names the correct trainable agent when the orchestrator has multiple agents.

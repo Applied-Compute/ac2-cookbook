@@ -10,8 +10,7 @@ READMEs short and runnable; put agent workflow guidance here.
 3. Use `.claude/skills/ac2-companion/references/runtime.md` for the `Agent`,
    `Environment`, `Task`, `Grader`, and `Orchestrator` model.
 4. Use `.claude/skills/ac2-companion/references/datasets.md` before eval or training work.
-5. Use `.claude/skills/ac2-companion/references/eval-local.md` and
-   `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
+5. Use `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
 6. Use `.claude/skills/ac2-companion/references/training.md` for training submissions.
 7. Use `.claude/skills/ac2-companion/references/migrations.md` before porting another
    framework into AC2.
@@ -43,8 +42,7 @@ READMEs short and runnable; put agent workflow guidance here.
 3. Use `.claude/skills/ac2-companion/references/runtime.md` for the `Agent`,
    `Environment`, `Task`, `Grader`, and `Orchestrator` model.
 4. Use `.claude/skills/ac2-companion/references/datasets.md` before eval or training work.
-5. Use `.claude/skills/ac2-companion/references/eval-local.md` and
-   `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
+5. Use `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
 6. Use `.claude/skills/ac2-companion/references/training.md` for training submissions.
 7. Use `.claude/skills/ac2-companion/references/migrations.md` before porting another
    framework into AC2.
