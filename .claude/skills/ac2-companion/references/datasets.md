@@ -2,7 +2,7 @@
 
 A **dataset** is a named, project-scoped collection of `Task` objects stored on AC2. Once uploaded, you reference the dataset by name from any eval or training run. Datasets are deduped and versioned — re-uploading the same task is a no-op, and you can read historical membership with `as_of=`.
 
-This is the single place that owns dataset semantics. `eval-remote.md` and `training.md` both require a dataset (inline tasks aren't supported there); `eval-local.md` accepts inline tasks but datasets are the right choice once the task set stabilizes.
+This is the single place that owns dataset semantics. `eval-remote.md` and `training.md` both require a dataset.
 
 ## Define tasks
 
@@ -166,8 +166,7 @@ CONFIG = EvalConfig(
 ```
 
 ```bash
-uv run python -m my_project.eval --local   # inline tasks= also allowed locally
-uv run python -m my_project.eval           # dataset required remotely
+uv run python -m my_project.eval
 ```
 
 ### Training — train + eval datasets
@@ -193,9 +192,8 @@ Typical pattern: keep `upload_dataset.py` at the project root so a fresh checkou
 - **`id=` is optional but useful.** Setting a stable `id` (e.g. from a hash) lets you join eval results back to specific problems across reruns.
 - **Membership is versioned with timestamps.** `as_of=` reads historical state. `client.datasets.active_tasks(name)` returns the current snapshot used by remote eval and training.
 - **`add_tasks` parallelizes uploads.** For large task sets (10k+) this is fast, but it still does real network work. Don't loop `add_tasks` once per task — batch.
-- **Inline tasks are only for local eval.** Remote eval and training need a registered dataset name.
 - **Project not found** → run `ac2 project init` inside the project folder, then rerun.
 - **`DatasetNotFoundError` on `datasets.get(...)`** → the dataset doesn't exist in this project. Use the get-or-create pattern above.
 - **Tasks "disappear" after a re-upload** → you `delete`d the dataset (which clears membership) or you're reading at an `as_of=` timestamp before your most recent `add_tasks`.
-- **Remote eval/training run sees 0 tasks** → the dataset is empty for the snapshot at submission time. Check `client.datasets.active_tasks(name)` locally.
+- **Eval/training run sees 0 tasks** → the dataset is empty for the snapshot at submission time. Check `client.datasets.active_tasks(name)` locally.
 - **Tasks with the same input but different expected answers collide** → they don't, because deduping includes `grader_params` and `env_params`. But if you're using a stable `id=` derived from input only, two distinct tasks will end up sharing an ID. Hash the full set of fields you care about.

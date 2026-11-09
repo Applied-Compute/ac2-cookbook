@@ -26,19 +26,18 @@ OPENAI_API_KEY=<val> uv run python session.py --start
 
 ## Eval
 
+Register your provider key as a secret (remote pods do not read your local
+shell), upload the dataset, then run the eval:
+
 ```bash
+ac2 secrets put --key OPENAI_API_KEY --value <val>
 uv run python upload_dataset.py
-uv run python -m rock_paper_scissors.eval --local
 uv run python -m rock_paper_scissors.eval
 ```
 
 ## Deploy
 
-Register your provider key as a secret (remote pods do not read your local
-shell), then deploy:
-
 ```bash
-ac2 secrets put --key OPENAI_API_KEY --value <val>
 uv run python -m rock_paper_scissors.deploy
 ```
 
@@ -59,6 +58,6 @@ rock-paper-scissors/
     ├── agent.py
     ├── environment.py
     ├── grader.py
-    ├── eval.py                 # named EvalConfig + local/remote launch
+    ├── eval.py                 # named EvalConfig + launch
     └── deploy.py               # named DeploymentConfig + launch
 ```

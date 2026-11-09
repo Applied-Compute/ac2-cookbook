@@ -12,11 +12,11 @@ Help the user build, evaluate, deploy, and train agents on AC2 (Applied Compute 
 
 ## How AC2 works
 
-AC2 is a platform for building, evaluating, deploying, and post-training agents. Work is organized around **managed projects**: a Python package under `src/` whose runtime components AC2 discovers and registers by class name. Define ordinary Python modules containing `EvalConfig`, `TrainingConfig`, or `DeploymentConfig`, then pass those configs to the matching `Client` method. Eval can run locally or remotely.
+AC2 is a platform for building, evaluating, deploying, and post-training agents. Work is organized around **managed projects**: a Python package under `src/` that holds your runtime components. Build an `EvalConfig`, `TrainingConfig`, or `DeploymentConfig` from configured component instances and pass it to the matching `Client` method; AC2 packages the project and runs it.
 
 - **Serving** — deploy an agent and open streaming sessions against it. `client.session.from_local`, `ac2 deployments run` / `client.deployments.create`, `client.session.from_remote`.
 - **Datasets** — upload, version, and share task sets. `client.datasets.*` / `upload_dataset.py`.
-- **Evaluation** — score an agent against a dataset with a grader. `ac2 eval run` / `client.eval.run(local=...)`.
+- **Evaluation** — score an agent against a dataset with a grader. `ac2 eval run` / `client.eval.run`.
 - **Training** — post-train an agent on a dataset against a grader. `ac2 train run` / `client.train.run`.
 
 The same runtime primitives (`Agent`, `Environment`, `Grader`, optionally `OrchestratorProtocol`) compose into every one of these — don't fork them per workflow.
@@ -29,8 +29,8 @@ Prefer the AC2-native path before custom scaffolding:
 
 1. Define the task contract: prompt shape, tool I/O, stop conditions, grading output, and success metrics.
 2. Use the smallest correct AC2 primitive: `Agent` for model behavior, `Environment` for tools and per-rollout state, `Task` for inputs/params, `Grader` for scoring, and `OrchestratorProtocol` only for multi-agent or custom control flow.
-3. Smoke-test locally before remote work: local session for deployable agents and a local eval for eval/training candidates.
-4. Promote to platform workflows only after the local loop is stable: upload datasets, register secrets, run remote eval, then train.
+3. Smoke-test deployable agents in a local session before remote work.
+4. Then move to platform workflows: upload datasets, register secrets, run eval, then train.
 5. Record exact commands, project, dataset, model, cluster, and any unresolved assumptions in the handoff.
 
 Do not hide platform or framework mismatches. If a construct from another framework does not map cleanly to AC2, explain the mismatch and use [migrations.md](references/migrations.md) before writing compatibility glue.
@@ -102,18 +102,17 @@ Read only the reference file(s) the user's task actually needs.
 - **Defining primitives**: see [runtime.md](references/runtime.md) — `Agent`, `Environment`, `Grader`, `Orchestrator`, `Task`
 - **Migrations**: see [migrations.md](references/migrations.md) — translate Claude Agents SDK, OpenAI Agents SDK, Prime Verifiers, Silverback, and generic harnesses to AC2
 - **Datasets**: see [datasets.md](references/datasets.md) — upload, version, list (`client.datasets.*`)
-- **Local eval**: see [eval-local.md](references/eval-local.md) — `EvalConfig` + `ac2 eval run --local`
-- **Remote eval**: see [eval-remote.md](references/eval-remote.md) — `EvalConfig` + `ac2 eval run`
+- **Eval**: see [eval-remote.md](references/eval-remote.md) — `EvalConfig` + `ac2 eval run`
 - **Training**: see [training.md](references/training.md) — `TrainingConfig` + `ac2 train run`
 - **Deploy**: see [deploy.md](references/deploy.md) — `DeploymentConfig` + `ac2 deployments run`
 - **CLI**: see [cli.md](references/cli.md) — `ac2` command reference
 - **Troubleshooting**: see [troubleshooting.md](references/troubleshooting.md) — symptom → cause map; check this when something fails
 
-Datasets show up across eval-remote, training, and (optionally) eval-local — load [datasets.md](references/datasets.md) alongside those workflows when the user needs to upload or share task sets.
+Datasets show up across eval-remote and training — load [datasets.md](references/datasets.md) alongside those workflows when the user needs to upload or share task sets.
 
 ## Workflow order
 
-For a new AC2 user, follow [setup.md](references/setup.md) → [runtime.md](references/runtime.md) → [eval-local.md](references/eval-local.md) → [datasets.md](references/datasets.md) → [eval-remote.md](references/eval-remote.md) → [training.md](references/training.md). [deploy.md](references/deploy.md) is orthogonal — reach for it whenever the user wants an interactive endpoint, not just at the end.
+For a new AC2 user, follow [setup.md](references/setup.md) → [runtime.md](references/runtime.md) → [datasets.md](references/datasets.md) → [eval-remote.md](references/eval-remote.md) → [training.md](references/training.md). [deploy.md](references/deploy.md) is orthogonal — reach for it whenever the user wants an interactive endpoint, not just at the end.
 
 For a migration, start with [migrations.md](references/migrations.md), then read the runtime/eval/deploy/training reference that matches the target workflow. Preserve the old task contract first; only then simplify into idiomatic AC2.
 

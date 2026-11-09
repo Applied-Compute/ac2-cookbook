@@ -28,13 +28,12 @@ def eval_config(model: str = "gpt-5-mini") -> EvalConfig:
 CONFIG = eval_config()
 
 
-async def main(*, local: bool = False, model: str = "gpt-5-mini") -> None:
-    await Client(project="dapo-math-check").eval.run(eval_config(model), local=local)
+async def main(*, model: str = "gpt-5-mini") -> None:
+    await Client(project="dapo-math-check").eval.run(eval_config(model))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--local", action="store_true")
     parser.add_argument("--model", default="gpt-5-mini")
     args = parser.parse_args()
-    asyncio.run(main(local=args.local, model=args.model))
+    asyncio.run(main(model=args.model))

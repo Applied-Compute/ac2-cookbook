@@ -56,14 +56,13 @@ uv run python -m sales_email_opsd.eval --model Qwen/Qwen3-4B
 ```
 
 This is a remote eval that allocates a model server. For a small functional check
-using a provider model, register that provider's key and run:
+using a provider model, register that provider's key as an AC2 secret and run:
 
 ```bash
-uv run python -m sales_email_opsd.eval --local --api-model gpt-5-mini --num-tasks 2
+uv run python -m sales_email_opsd.eval --api-model gpt-5-mini --num-tasks 2
 ```
 
-The provider-model check is not the Qwen training baseline. Local eval still reads
-the registered AC2 dataset and emits AC2 traces.
+The provider-model check is not the Qwen training baseline.
 
 Choose one training mode:
 

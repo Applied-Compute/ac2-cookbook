@@ -51,7 +51,7 @@ Optional: `ac2_user=` for a simulated user policy (see `tau2bench`).
 
 ## Prerequisites
 
-1. Working local and remote eval with the same components and grader.
+1. A working eval with the same components and grader.
 2. Managed project with one importable package under `src/`.
 3. Train and eval datasets uploaded.
 4. Provider secrets registered (`ac2 secrets put`).

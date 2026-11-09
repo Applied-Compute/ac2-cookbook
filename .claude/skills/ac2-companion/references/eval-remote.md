@@ -1,6 +1,6 @@
 # Running an eval remotely
 
-Remote is the default for `client.eval.run(config)`. AC2 discovers the
+`client.eval.run(config)` runs remotely. AC2 discovers the
 configured components, builds the managed project, uploads it, and runs the
 eval on a cluster.
 
@@ -30,7 +30,7 @@ async def main() -> None:
     await Client(project="my-project").eval.run(CONFIG)
 ```
 
-Remote evals require a registered dataset — inline `tasks=` is local-only.
+Evals require a registered dataset.
 
 ## Launch
 
