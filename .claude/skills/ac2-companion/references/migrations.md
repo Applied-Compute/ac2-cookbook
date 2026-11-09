@@ -20,7 +20,7 @@ Use this guide before porting code from Claude Agents SDK, OpenAI Agents SDK, Pr
 | Reward function, scorer, evaluator, rubric | `Grader` or `LLMGrader` | Deterministic checks should subclass `Grader`; judge-based scoring can subclass `LLMGrader`. |
 | Multi-agent flow, planner/writer/reviewer, judge selection, compaction | `OrchestratorProtocol` | Start episodes with `self.session.start_episode(agent)` and drive turns with `self.session.run_turn(...)`. |
 | User simulator, nudges after plain-text replies, forced tool loops | `User` policy, or orchestrator-level loop | Do not make the environment emit user messages; `Environment.step` returns tool outputs only. |
-| Eval runner | `EvalConfig` + `client.eval.run(config)` | Requires a dataset name; AC2 builds/uploads the project. Inline tasks are not supported. |
+| Eval runner | `EvalConfig` + `client.eval.run(config)` | Requires a dataset name; AC2 builds/uploads the project. |
 | Hosted training config | `TrainingConfig` + `client.train.run(config)` | Reuses the same components, grader, and datasets as eval. |
 | Deployment/session endpoint | `DeploymentConfig` + `client.deployments.create(config)` | Use for interactive serving, not for eval-only workflows. |
 

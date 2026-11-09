@@ -2,7 +2,7 @@
 
 A **dataset** is a named, project-scoped collection of `Task` objects stored on AC2. Once uploaded, you reference the dataset by name from any eval or training run. Datasets are deduped and versioned — re-uploading the same task is a no-op, and you can read historical membership with `as_of=`.
 
-This is the single place that owns dataset semantics. `eval-remote.md` and `training.md` both require a dataset; inline tasks aren't supported.
+This is the single place that owns dataset semantics. `eval-remote.md` and `training.md` both require a dataset.
 
 ## Define tasks
 
@@ -192,7 +192,6 @@ Typical pattern: keep `upload_dataset.py` at the project root so a fresh checkou
 - **`id=` is optional but useful.** Setting a stable `id` (e.g. from a hash) lets you join eval results back to specific problems across reruns.
 - **Membership is versioned with timestamps.** `as_of=` reads historical state. `client.datasets.active_tasks(name)` returns the current snapshot used by remote eval and training.
 - **`add_tasks` parallelizes uploads.** For large task sets (10k+) this is fast, but it still does real network work. Don't loop `add_tasks` once per task — batch.
-- **Inline tasks are not supported.** Eval and training need a registered dataset name.
 - **Project not found** → run `ac2 project init` inside the project folder, then rerun.
 - **`DatasetNotFoundError` on `datasets.get(...)`** → the dataset doesn't exist in this project. Use the get-or-create pattern above.
 - **Tasks "disappear" after a re-upload** → you `delete`d the dataset (which clears membership) or you're reading at an `as_of=` timestamp before your most recent `add_tasks`.

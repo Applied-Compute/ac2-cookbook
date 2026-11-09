@@ -30,7 +30,7 @@ async def main() -> None:
     await Client(project="my-project").eval.run(CONFIG)
 ```
 
-Evals require a registered dataset; inline `tasks=` is not supported.
+Evals require a registered dataset.
 
 ## Launch
 

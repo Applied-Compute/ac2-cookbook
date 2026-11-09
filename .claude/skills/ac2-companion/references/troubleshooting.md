@@ -9,7 +9,6 @@ Symptom → likely cause. Check here before inventing a new diagnosis.
 | Remote run fails with provider auth | Secrets not registered | `ac2 secrets put --key OPENAI_API_KEY --value ...` |
 | `ModuleNotFoundError` in remote run | Dependency missing from `[project].dependencies`, or package layout wrong | Add the dep to `pyproject.toml`, keep code under `src/<package>/`, then re-run. |
 | Remote run doesn't reflect recent edits | Stale uploaded version | Re-run the project module (it pushes), or run `ac2 project push`. |
-| Eval rejects `tasks=` | Inline tasks are not supported | Upload a dataset and set `dataset=` in `EvalConfig`. |
 | Empty eval results | Dataset empty or every rollout errored | Check dashboard traces; verify `upload_dataset.py` ran. |
 | Deployment stuck `deploying` | Wheel/deps failed to install | Check deployment logs; fix `[project].dependencies` and re-run the deploy module. |
 | Component name not found | Class is outside `src/<package>`, abstract, or has a different class name | Keep it in the managed package and use its exact class name in the config. |

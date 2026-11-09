@@ -12,7 +12,7 @@ Help the user build, evaluate, deploy, and train agents on AC2 (Applied Compute 
 
 ## How AC2 works
 
-AC2 is a platform for building, evaluating, deploying, and post-training agents. Work is organized around **managed projects**: a Python package under `src/` whose runtime components AC2 discovers and registers by class name. Define ordinary Python modules containing `EvalConfig`, `TrainingConfig`, or `DeploymentConfig`, then pass those configs to the matching `Client` method.
+AC2 is a platform for building, evaluating, deploying, and post-training agents. Work is organized around **managed projects**: a Python package under `src/` that holds your runtime components. Build an `EvalConfig`, `TrainingConfig`, or `DeploymentConfig` from configured component instances and pass it to the matching `Client` method; AC2 packages the project and runs it.
 
 - **Serving** — deploy an agent and open streaming sessions against it. `client.session.from_local`, `ac2 deployments run` / `client.deployments.create`, `client.session.from_remote`.
 - **Datasets** — upload, version, and share task sets. `client.datasets.*` / `upload_dataset.py`.
