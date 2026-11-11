@@ -48,7 +48,7 @@ def make_tasks(*, pull_requests: Sequence[dict[str, str]]) -> list[Task]:
     model = _openai()
     tasks: list[Task] = []
     for pull_request in pull_requests:
-        response = httpx.get(pull_request["patch_url"], timeout=20)
+        response = httpx.get(pull_request["patch_url"], timeout=20, follow_redirects=True)
         response.raise_for_status()
         patch = response.text[:30_000]
         generated = model.chat.completions.parse(
