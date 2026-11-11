@@ -59,6 +59,7 @@ example.
 | Project                                                               | Lifecycle   | Shows                                                        |
 | --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
 | [swebench-opencode](swebench-opencode/)                               | AC2-managed | A CLI harness, sandbox handoff, and AC2-side grading          |
+| [byoh-smoke-example](byoh-smoke-example/)                             | Self-hosted | One model call per rollout, as a container                    |
 | [byoh-agents-web-search-api](byoh-agents-web-search-api/)             | Self-hosted | A stateful Harness API with AC2-side grading                  |
 | [byoh-modal-coding-api](byoh-modal-coding-api/)                       | Self-hosted | External execution with customer-side grading                |
 
