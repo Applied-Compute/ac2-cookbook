@@ -326,7 +326,7 @@ class Tau2BenchGrader(LLMGrader):
                               (default ``[DB, COMMUNICATE]``)
     """
 
-    model_config = ModelConfiguration(model="gpt-5-mini")
+    model_config = ModelConfiguration(model="gpt-5.6-luna")
 
     async def _grade(
         self,
