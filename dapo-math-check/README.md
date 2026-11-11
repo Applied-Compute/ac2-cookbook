@@ -75,16 +75,21 @@ spending all three attempts. A teacher-only hint tells it to keep verifying with
 base as teacher. The behavior is taught only through the hint, never the student
 prompt.
 
-Two datasets are pre-registered in `dapo-math-check`:
+These configs need two datasets that `upload_dataset.py` does not create, and
+their source transcripts are not bundled in `data/`. Register your own under
+these names before running the commands below:
 
 - `dapo-math-check-opsd-train` — base-model transcripts of premature
-  finalizations, each carrying the teacher-only hint and the assistant-turn
-  boundary to distill. Used by offline, one-step, and SFT.
+  finalizations. Each task's `input` is the transcript, and
+  `grader_params["opsd_hint_selections"]` holds the `HintSelection`: the
+  teacher-only hint and the assistant-turn boundary to distill. Used by offline,
+  one-step, and SFT.
 - `dapo-math-check-opsd-online-train` — the plain questions those failures came
-  from, carrying `judge_prompt` / `judge_model` in `grader_params` so a judge
-  writes the hint live at training time. Used by online.
+  from. Used by online, which also needs an `OnlineHinter` to write the hint
+  live at training time; this example does not ship one.
 
-Requires `ac2 >= 0.3.10`; `uv sync` pulls it.
+[`sales-email-opsd`](../sales-email-opsd) is a complete OPSD example: it builds
+its hinted datasets and ships an `OnlineHinter`.
 
 ### Offline
 
@@ -108,9 +113,9 @@ uv run python -m dapo_math_check.train_opsd --mode one_step
 ### Online
 
 The student rolls out the full episode live — the real `DapoMathAgent` /
-`DapoMathCheckEnvironment` / `DapoMathCheckGrader` — and a judge inspects each
-graded rollout, picks the assistant turn that finalized prematurely, and writes
-the teacher-only hint for it.
+`DapoMathCheckEnvironment` / `DapoMathCheckGrader` — and an `OnlineHinter`
+inspects each graded rollout, picks the assistant turn that finalized
+prematurely, and writes the teacher-only hint for it.
 
 ```bash
 uv run python -m dapo_math_check.train_opsd --mode online
@@ -131,6 +136,6 @@ All three OPSD modes optimize the same RMSD loss (top-K reverse-KL, student vs
 frozen teacher over the shared response). The token-selection judge is a
 separate, optional knob narrowing which response tokens that loss trains on — set
 `judge_model` (and the `judge_*` fields) on any config in `train_opsd.py`. It
-composes with, but is distinct from, the online per-task hint judge. The `online`
+composes with, but is distinct from, the online hinter. The `online`
 config ships it on (`judge_model="gpt-5-mini"`); delete that line for the plain
 RMSD loss.
