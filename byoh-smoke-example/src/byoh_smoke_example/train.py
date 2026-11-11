@@ -6,8 +6,6 @@ from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 from .grader import AnswerGrader
 
-CLUSTER_ID = "<your-cluster-id>"
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -31,8 +29,6 @@ def main() -> None:
             ac2_train_dataset=args.dataset,
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
-            backend="dispatch",
-            cluster_id=CLUSTER_ID,
             name="byoh-smoke-example",
         )
     )

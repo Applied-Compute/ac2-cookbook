@@ -48,9 +48,7 @@ uv run python -m byoh_smoke_example.eval
 
 ## Train
 
-With the Harness API and connector still running, set `CLUSTER_ID` at the top
-of [`train.py`](src/byoh_smoke_example/train.py) to the GPU cluster your
-organization trains on, then start a one-step run:
+With the Harness API and connector still running, start a one-step run:
 
 ```bash
 uv run python -m byoh_smoke_example.train
