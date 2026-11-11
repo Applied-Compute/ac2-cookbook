@@ -19,7 +19,7 @@ ac2 = false
 
 [[package]]
 name = "ac2"
-version = "0.3.95"
+version = "0.3.96"
 source = { registry = "https://api.appliedcompute.com/v1/pypi/simple/" }
 dependencies = [
     { name = "anthropic" },
@@ -53,9 +53,9 @@ dependencies = [
     { name = "websockets" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.95/ac2-0.3.95.tar.gz", hash = "sha256:cd714885f62ad370441242677fdecbaeecb18132538ffdff903f7ba4e47c0c34", upload-time = "2026-11-10T18:39:57.137Z" }
+sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.96/ac2-0.3.96.tar.gz", hash = "sha256:008e5654b1f9fbf50e0b7536eac354ec00735933461c14317ebdccf2634e2824", upload-time = "2026-11-11T01:56:50.148Z" }
 wheels = [
-    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.95/ac2-0.3.95-py3-none-any.whl", hash = "sha256:ca42fb4996feb0b1f97624c5db29c665d10ee2097bd20fa525ae94135ebd3cfd", upload-time = "2026-11-10T18:39:56.877Z" },
+    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.96/ac2-0.3.96-py3-none-any.whl", hash = "sha256:4243ece1d98a32b5df720fc3fb1fcd75d0657092a0f3fe63d90ade094a9149a7", upload-time = "2026-11-11T01:56:49.806Z" },
 ]
 
 [[package]]
@@ -1900,8 +1900,8 @@ name = "pendulum"
 version = "3.3.0"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
-    { name = "python-dateutil" },
-    { name = "tzdata" },
+    { name = "python-dateutil", marker = "python_full_version < '3.13'" },
+    { name = "tzdata", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d8/3f/345b5bc712ce806f3b5fbce6eea141f46713b2c1a7654eaead1b2593d5a1/pendulum-3.3.0.tar.gz", hash = "sha256:9aceb5b24e9f55381df08187397e88546b5ba82f698b741cbf1a05c5e2369116", size = 87458, upload-time = "2026-10-12T20:54:11.461Z" }
 wheels = [
@@ -3265,8 +3265,8 @@ name = "whenever"
 version = "0.10.5"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
-    { name = "tzdata", marker = "sys_platform == 'win32'" },
-    { name = "tzlocal", marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+    { name = "tzdata", marker = "python_full_version >= '3.13' and sys_platform == 'win32'" },
+    { name = "tzlocal", marker = "python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d2/09/9ec61cfa69047a75af61e8db53e7782ed5b3995bc8a08132b951202c8aaf/whenever-0.10.5.tar.gz", hash = "sha256:bc8fd6208d50be50e490a3628fa6346d006b02df5de64c43170df8a809ded8d4", size = 437531, upload-time = "2026-08-07T15:03:30.933Z" }
 wheels = [
