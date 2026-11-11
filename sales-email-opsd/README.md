@@ -10,7 +10,7 @@ Sonnet 4.5, not customer production traces.
 ## Set up and upload the datasets
 
 Install and authenticate [AC2](https://docs.appliedcompute.com/quickstart). Requires
-Python 3.12+ and AC2 0.3.73+. From this directory:
+Python 3.12+ and AC2 0.3.79+. From this directory:
 
 ```bash
 ac2 projects init
@@ -88,7 +88,7 @@ Online mode simulates the rep with `gpt-4.1` so each conversation reacts to the
 student's drafts; `--replay-user` replays the recorded rep turns instead. It also
 uses `gpt-5-mini` twice: as the hint writer, and as a token judge that selects which
 response tokens receive RMSD loss (`--no-token-judge` trains on every token). Store
-`OPENAI_API_KEY` in your AC2 project's secrets.
+the provider key first: `ac2 secrets put --key OPENAI_API_KEY --value <val>`.
 
 Find a checkpoint ID in the run's checkpoint list, then evaluate it:
 
@@ -104,6 +104,12 @@ feedback can fit a new draft imperfectly. Use `--simulate-user` on eval for
 adaptive conversations like online training's; that adds provider cost and makes a
 paired comparison less controlled. Simulator errors fail the rollout instead of
 silently ending a successful conversation.
+
+Deploy the agent on a provider model or a served endpoint:
+
+```bash
+uv run python -m sales_email_opsd.deploy --model gpt-5-mini
+```
 
 Compare the **score** (share of dash-free replies), `dashes_per_1k_words`, the strict
 pass in `clean`, output validity, and run failures. Inspect drafts for preserved

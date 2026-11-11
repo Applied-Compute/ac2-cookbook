@@ -26,7 +26,7 @@ def eval_config(
     if num_tasks is not None and num_tasks < 1:
         raise ValueError("num_tasks must be positive")
     if checkpoint is not None:
-        served_model = ModelConfig(checkpoint_id=checkpoint)
+        served_model = ModelConfig(checkpoint=checkpoint)
     else:
         served_model = model or (BASE_MODEL if api_model is None else None)
     return EvalConfig(
