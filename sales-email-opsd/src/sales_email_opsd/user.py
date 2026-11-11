@@ -67,8 +67,8 @@ class ReplaySalesEmailUser(User):
 class SalesEmailUser(User):
     """Adaptive simulator for exploratory runs; failures remain rollout errors."""
 
-    def __init__(self, model: str = "gpt-4.1-2025-04-14") -> None:
-        self.model_configuration = ModelConfiguration(model=model, kwargs={"temperature": 0.0})
+    def __init__(self, model: str = "gpt-5.6-luna") -> None:
+        self.model_configuration = ModelConfiguration(model=model)
 
     async def setup(self, task: Task) -> None:
         params = UserParameters.model_validate(task.env_params)

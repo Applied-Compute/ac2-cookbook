@@ -7,7 +7,7 @@ from ac2.runtime import HintMutation, HintSelection, Message, ModelConfiguration
 from .prompts import JUDGE_PROMPT
 from .text import message_text
 
-JUDGE_MODEL = "gpt-5-mini"
+JUDGE_MODEL = "gpt-5.6-luna"
 
 
 class SalesEmailJudgeHinter(OfflineHinter):

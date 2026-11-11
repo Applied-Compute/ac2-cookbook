@@ -57,7 +57,7 @@ This is a remote eval that allocates a model server. For a small functional chec
 using a provider model, register that provider's key as an AC2 secret and run:
 
 ```bash
-uv run python -m sales_email_opsd.eval --api-model gpt-5-mini --num-tasks 2
+uv run python -m sales_email_opsd.eval --api-model gpt-5.6-luna --num-tasks 2
 ```
 
 The provider-model check is not the Qwen training baseline.
@@ -91,14 +91,14 @@ Both remote eval commands use all 30 held-out tasks, one sample per task, and
 temperature 0. The default user policy replays the same recorded requests and
 followups for each model. This holds the user inputs fixed, although recorded
 feedback can fit a new draft imperfectly. Use `--simulate-user` on eval for
-adaptive conversations (`gpt-4.1` plays the rep); that adds provider cost and makes a
+adaptive conversations (`gpt-5.6-luna` plays the rep); that adds provider cost and makes a
 paired comparison less controlled. Simulator errors fail the rollout instead of
 silently ending a successful conversation.
 
 Deploy the agent on a provider model or a served endpoint:
 
 ```bash
-uv run python -m sales_email_opsd.deploy --model gpt-5-mini
+uv run python -m sales_email_opsd.deploy --model gpt-5.6-luna
 ```
 
 Compare the **score** (share of dash-free replies), `dashes_per_1k_words`, the strict
@@ -109,7 +109,7 @@ a small demonstration, not a broad estimate of generalization.
 ## Model-written hints
 
 To train on hints written by a model instead of the template, run the hinter over
-the replay dataset. It calls `gpt-5-mini` once per task, so store the provider key
+the replay dataset. It calls `gpt-5.6-luna` once per task, so store the provider key
 first: `ac2 secrets put --key OPENAI_API_KEY --value <val>`.
 
 ```bash
