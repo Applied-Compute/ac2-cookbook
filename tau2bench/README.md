@@ -9,13 +9,14 @@ grader scores the conversation.
 Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
 
 ```bash
-ac2 project init
 uv sync
+uv run ac2 project init
 ```
 
-`ac2 project init` registers this folder and writes the `[tool.ac2]` marker used
-by the CLI. Runtime deps live in `[project].dependencies`; AC2 builds a wheel
-from this package for remote runs.
+`ac2 project init` registers this folder as the `tau2bench` project (the name
+comes from `[project]` in `pyproject.toml`). Runtime deps live in
+`[project].dependencies`; AC2 uploads this folder and builds a wheel from it
+each time you submit a run.
 
 ## Secrets
 

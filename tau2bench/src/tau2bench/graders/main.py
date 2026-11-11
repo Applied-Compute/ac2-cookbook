@@ -332,8 +332,10 @@ class Tau2BenchGrader(LLMGrader):
         self,
         grader_params: dict | None,
         trace: Trace,
-        env: EnvironmentProtocol,
+        env: EnvironmentProtocol | None,
     ) -> GraderOutput:
+        if env is None:
+            raise ValueError(f"{type(self).__name__} grades inside an environment and was given none")
         params = grader_params or {}
 
         if getattr(env, "terminated", False) and not _was_transfer_to_human(trace):
