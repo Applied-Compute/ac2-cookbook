@@ -13,7 +13,7 @@ def _debug() -> bool:
 
 class RPSAgent(Agent):
     description = "Plays rock-paper-scissors against a mystery opponent."
-    model_configuration = ModelConfiguration(model="gpt-5-mini")
+    model_configuration = ModelConfiguration(model="gpt-5.6-luna")
     system_prompt = (
         f"You are playing rock-paper-scissors against a mystery opponent for {MAX_ROUNDS} rounds.\n"
         "\n"
