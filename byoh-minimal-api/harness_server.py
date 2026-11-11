@@ -44,7 +44,9 @@ class MinimalHarness:
 
         _question(request.task)
         rollout_id = f"minimal_{uuid.uuid4().hex}"
-        execution = asyncio.create_task(run_rollout(request), name=f"minimal-{rollout_id}")
+        execution = asyncio.create_task(
+            run_rollout(request), name=f"minimal-{rollout_id}"
+        )
         self._rollouts[rollout_id] = _Rollout(execution=execution)
         self._submission_keys[idempotency_key] = rollout_id
         return rollout_id
@@ -52,7 +54,11 @@ class MinimalHarness:
     def status(self, rollout_id: str) -> RolloutStatus:
         rollout = self._get(rollout_id)
         if rollout.output is not None:
-            return RolloutStatus.failed if rollout.output.error else RolloutStatus.completed
+            return (
+                RolloutStatus.failed
+                if rollout.output.error
+                else RolloutStatus.completed
+            )
         if not rollout.execution.done():
             return RolloutStatus.running
         if rollout.execution.cancelled() or rollout.execution.exception() is not None:
@@ -87,7 +93,9 @@ def create_app(harness: MinimalHarness) -> FastAPI:
     @app.post("/submit", response_model=SubmitResponse)
     async def submit(
         request: SubmitPayload,
-        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=255)],
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=1, max_length=255)
+        ],
     ) -> SubmitResponse:
         return SubmitResponse(rollout_id=harness.submit(request, idempotency_key))
 
@@ -103,7 +111,9 @@ def create_app(harness: MinimalHarness) -> FastAPI:
 
 
 async def run_rollout(request: SubmitPayload) -> MinimalOutput:
-    async with AsyncOpenAI(api_key=request.ac_api_key, base_url=request.ac_api_url) as model:
+    async with AsyncOpenAI(
+        api_key=request.ac_api_key, base_url=request.ac_api_url
+    ) as model:
         completion = await model.chat.completions.create(
             model="policy",
             messages=[{"role": "user", "content": _question(request.task)}],
@@ -117,7 +127,9 @@ def _question(task: HarnessTask) -> str:
     try:
         message = Message.model_validate(task.input[0])
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail="Expected one text user message") from exc
+        raise HTTPException(
+            status_code=422, detail="Expected one text user message"
+        ) from exc
     if message.role != "user" or not isinstance(message.content, str):
         raise HTTPException(status_code=422, detail="Expected one text user message")
     return message.content

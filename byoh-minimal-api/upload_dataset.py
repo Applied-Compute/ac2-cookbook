@@ -23,7 +23,8 @@ def main() -> None:
         client.datasets.get(args.dataset)
     except DatasetNotFoundError:
         client.datasets.create(
-            args.dataset, description="Factual questions for a minimal self-hosted BYOH harness."
+            args.dataset,
+            description="Factual questions for a minimal self-hosted BYOH harness.",
         )
     client.datasets.add_tasks(
         args.dataset,
