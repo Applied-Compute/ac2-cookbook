@@ -5,15 +5,10 @@ from typing import Literal
 
 from ac2.sdk import Client, DatasetSource, TrainingConfig
 
-from .agent import BASE_MODEL, SalesEmailAgent
-from .dataset import EVAL_DATASET, ONLINE_TRAIN_DATASET, TRAIN_DATASET
-from .environment import SalesEmailEnvironment
-from .grader import EmDashGrader
-from .hinter import JUDGE_MODEL, SalesEmailJudgeHinter
-from .user import ReplaySalesEmailUser, SalesEmailUser
+from .agent import BASE_MODEL
+from .dataset import TRAIN_DATASET
 
-Mode = Literal["offline", "one_step", "online"]
-HINTER_PATH = f"{SalesEmailJudgeHinter.__module__}.{SalesEmailJudgeHinter.__name__}"
+Mode = Literal["offline", "one_step"]
 
 
 def training_config(
@@ -22,17 +17,12 @@ def training_config(
     model: str = BASE_MODEL,
     steps: int = 20,
     smoke: bool = False,
-    replay_user: bool = False,
-    token_judge: str | None = JUDGE_MODEL,
+    dataset: str = TRAIN_DATASET,
 ) -> TrainingConfig:
-    if mode not in {"offline", "one_step", "online"}:
+    if mode not in {"offline", "one_step"}:
         raise ValueError(f"Unsupported OPSD mode: {mode}")
     if steps < 1:
         raise ValueError("steps must be positive")
-    if replay_user and mode != "online":
-        raise ValueError("Replayed users require online rollouts")
-    online = mode == "online"
-    dataset = ONLINE_TRAIN_DATASET if online else TRAIN_DATASET
     return TrainingConfig(
         model=model,
         method="opsd",
@@ -45,17 +35,10 @@ def training_config(
         seed=42,
         priority="low",
         ac2_train_dataset=DatasetSource(dataset=dataset, num_tasks=10 if smoke else None),
-        ac2_agent=SalesEmailAgent(model=model) if online else None,
-        ac2_env=SalesEmailEnvironment() if online else None,
-        ac2_user=(ReplaySalesEmailUser() if replay_user else SalesEmailUser()) if online else None,
-        ac2_grader=EmDashGrader() if online else None,
-        ac2_eval_dataset=EVAL_DATASET if online else None,
-        judge_model=token_judge if online else None,
-        extra_train_args={"rmsd_hinter_path": HINTER_PATH} if online else {},
     )
 
 
-CONFIGS = {mode: training_config(mode) for mode in ("offline", "one_step", "online")}
+CONFIGS = {mode: training_config(mode) for mode in ("offline", "one_step")}
 
 
 def main() -> None:
@@ -65,18 +48,10 @@ def main() -> None:
     parser.add_argument("--model", default=BASE_MODEL)
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--smoke", action="store_true", help="One training step over at most ten tasks")
-    parser.add_argument("--replay-user", action="store_true", help="Replay recorded rep turns online")
-    parser.add_argument(
-        "--no-token-judge", action="store_true", help="Train on every response token in online mode"
-    )
+    parser.add_argument("--dataset", default=TRAIN_DATASET, help="Hinted replay dataset to train on")
     args = parser.parse_args()
     config = training_config(
-        args.mode,
-        model=args.model,
-        steps=args.steps,
-        smoke=args.smoke,
-        replay_user=args.replay_user,
-        token_judge=None if args.no_token_judge else JUDGE_MODEL,
+        args.mode, model=args.model, steps=args.steps, smoke=args.smoke, dataset=args.dataset
     )
     print(Client(project=args.project).train.run(config))
 
