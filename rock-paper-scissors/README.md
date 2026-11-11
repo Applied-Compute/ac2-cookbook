@@ -14,9 +14,10 @@ uv sync
 cp .env.example .env   # set OPENAI_API_KEY
 ```
 
-`ac2 project init` registers this folder and writes the `[tool.ac2]` marker used
-by the CLI. Runtime deps live in `[project].dependencies`; AC2 builds a wheel
-from this package for remote runs.
+`ac2 project init` registers this folder (marked by `[tool.ac2]` in
+`pyproject.toml`) as an AC2 project and uploads it as the first version; each
+eval or deployment uploads the current folder on submit. Runtime deps live in
+`[project].dependencies`; AC2 builds a wheel from this package for remote runs.
 
 ## Interactive local session
 
