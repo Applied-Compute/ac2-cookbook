@@ -46,6 +46,17 @@ Run the eval in a third terminal, without the connector variables:
 uv run python -m byoh_smoke_example.eval
 ```
 
+## Train
+
+With the Harness API and connector still running, start a one-step run:
+
+```bash
+uv run python -m byoh_smoke_example.train
+```
+
+It runs one training step with two rollouts through your harness. Training calls
+the model being trained, so it needs no OpenAI key. Pass `--steps` for more.
+
 ## Build the image
 
 The image serves the Harness API on port 8000 as a non-root user. Its build
