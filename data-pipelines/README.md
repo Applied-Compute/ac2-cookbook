@@ -11,6 +11,8 @@ uv sync
 ac2 project init
 ```
 
+Run the tests with `uv run pytest ../tests/test_data_pipelines.py`.
+
 Set your source trace job or inference deployment ID and AC2 project in `src/data_pipelines/hourly.py` before deploying the scheduled example. Choose a source in a project your API key can read. Register secrets once:
 
 ```bash
