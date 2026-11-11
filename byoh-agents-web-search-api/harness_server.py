@@ -145,7 +145,10 @@ async def run_web_search(request: SubmitPayload) -> WebSearchOutput:
         ) as openai_client,
         httpx.AsyncClient(
             base_url="https://en.wikipedia.org",
-            headers={"User-Agent": "ac2-cookbook/1.0"},
+            # Wikipedia answers 403 to a User-Agent that carries no contact URL.
+            headers={
+                "User-Agent": "ac2-cookbook/1.0 (https://github.com/Applied-Compute/ac2-cookbook)"
+            },
             timeout=20,
         ) as search_client,
     ):
