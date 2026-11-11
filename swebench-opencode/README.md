@@ -31,12 +31,12 @@ or library.
 is the code you implement. Its
 `SwebenchOpenCodeOrchestrator` maps the three lifecycle operations to OpenCode:
 
-- `trigger_rollout` starts the CLI with the model endpoint and API key supplied
+- `submit` starts the CLI with the model endpoint and API key supplied
   by AC2. The orchestrator generates and returns the rollout ID; AC2 does not
   assign it.
-- `check_status` translates the CLI process state into `RUNNING`, `COMPLETED`,
-  or `ERRORED`.
-- `fetch_assets` captures the model's patch and prepares the environment for
+- `get_status` translates the CLI process state into a `BlackBoxRolloutResult`
+  with status `RUNNING`, `COMPLETED`, or `ERRORED` (plus an error message).
+- `collect_outputs` captures the model's patch and prepares the environment for
   grading.
 
 `environment.py` owns the Modal sandboxes because they are part of this
@@ -46,10 +46,10 @@ harness's execution and grading state.
 
 1. AC2 creates `SwebenchOpenCodeEnvironment` for a dataset task.
 2. The environment starts a Modal sandbox from the task's SWE-bench image.
-3. AC2 calls `trigger_rollout`; OpenCode works in the repository using the model
+3. AC2 calls `submit`; OpenCode works in the repository using the model
    endpoint supplied by AC2.
-4. AC2 polls `check_status` until the CLI exits.
-5. `fetch_assets` extracts the patch and applies it to a clean grading sandbox.
+4. AC2 polls `get_status` until the CLI exits.
+5. `collect_outputs` extracts the patch and applies it to a clean grading sandbox.
 6. `SwebenchVerifiedGrader` runs the official tests and returns a binary score.
 
 ## Code map
@@ -66,9 +66,10 @@ harness's execution and grading state.
 ## Adapt it to your harness
 
 Replace the OpenCode command and task-specific sandbox setup with your CLI or
-library. Preserve the three orchestrator methods, pass the model endpoint and
-API key supplied by AC2 to your model client unchanged, and store everything the
-grader needs on the orchestrator environment during `fetch_assets`.
+library. Preserve the three `CustomHarnessOrchestrator` methods, pass the model
+endpoint and API key supplied by AC2 to your model client unchanged, and store
+everything the grader needs on the orchestrator environment during
+`collect_outputs`.
 
 ## Setup
 
@@ -107,9 +108,9 @@ uv run python upload_dataset.py --num-tasks 2
 
 Pass `--instance-id <id>` one or more times to select specific tasks.
 
-Commit and push this project before launching a remote job so AC2 can load its
-components. The eval and training launchers use the model access provisioned by
-AC2 automatically.
+Each remote launch uploads this folder as a new project version, so AC2 runs
+the code you have locally. The eval and training launchers use the model access
+provisioned by AC2 automatically.
 
 ## Run an eval
 

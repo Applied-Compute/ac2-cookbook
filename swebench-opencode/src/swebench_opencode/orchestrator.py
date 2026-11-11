@@ -7,8 +7,9 @@ import uuid
 from pydantic import JsonValue
 
 from ac2.runtime import (
-    BlackBoxOrchestratorProtocol,
+    BlackBoxRolloutResult,
     BlackBoxRolloutStatus,
+    CustomHarnessOrchestrator,
     Input,
     Message,
 )
@@ -21,8 +22,7 @@ ROLLOUT_TIMEOUT_SECONDS = 2 * 60 * 60
 OUTPUT_METADATA_LIMIT = 4_000
 
 
-class SwebenchOpenCodeOrchestrator(BlackBoxOrchestratorProtocol):
-    agent_name = "opencode"
+class SwebenchOpenCodeOrchestrator(CustomHarnessOrchestrator):
     POLLING_INTERVAL_S = 1
     ROLLOUT_TIMEOUT_S = ROLLOUT_TIMEOUT_SECONDS + 5 * 60
 
@@ -30,14 +30,14 @@ class SwebenchOpenCodeOrchestrator(BlackBoxOrchestratorProtocol):
         self.env = SwebenchOpenCodeEnvironment()
         self._rollouts: dict[str, asyncio.Task[CommandResult]] = {}
 
-    async def trigger_rollout(
+    async def submit(
         self,
         rollout_proxy_url: str,
         api_key: str,
         turn_input: Input,
-        rollout_id: str | None = None,
+        continue_rollout_id: str | None = None,
     ) -> str:
-        if rollout_id is not None:
+        if continue_rollout_id is not None:
             raise ValueError("OpenCode SWE-bench rollouts only support one turn")
         external_rollout_id = uuid.uuid4().hex
         self._rollouts[external_rollout_id] = asyncio.create_task(
@@ -50,18 +50,29 @@ class SwebenchOpenCodeOrchestrator(BlackBoxOrchestratorProtocol):
         )
         return external_rollout_id
 
-    async def check_status(self, ext_rollout_id: str) -> BlackBoxRolloutStatus:
-        rollout = self._rollouts[ext_rollout_id]
+    async def get_status(self, rollout_id: str) -> BlackBoxRolloutResult:
+        rollout = self._rollouts[rollout_id]
         if not rollout.done():
-            return BlackBoxRolloutStatus.RUNNING
-        if rollout.cancelled() or rollout.exception() is not None:
-            return BlackBoxRolloutStatus.ERRORED
+            return BlackBoxRolloutResult(status=BlackBoxRolloutStatus.RUNNING)
+        if rollout.cancelled():
+            return BlackBoxRolloutResult(
+                status=BlackBoxRolloutStatus.ERRORED,
+                error_message="OpenCode was cancelled",
+            )
+        if error := rollout.exception():
+            return BlackBoxRolloutResult(
+                status=BlackBoxRolloutStatus.ERRORED,
+                error_message=str(error)[:2000],
+            )
         if rollout.result().returncode != 0:
-            return BlackBoxRolloutStatus.ERRORED
-        return BlackBoxRolloutStatus.COMPLETED
+            return BlackBoxRolloutResult(
+                status=BlackBoxRolloutStatus.ERRORED,
+                error_message=f"OpenCode exited with code {rollout.result().returncode}",
+            )
+        return BlackBoxRolloutResult(status=BlackBoxRolloutStatus.COMPLETED)
 
-    async def fetch_assets(self, ext_rollout_id: str) -> JsonValue:
-        result = await self._rollouts[ext_rollout_id]
+    async def collect_outputs(self, rollout_id: str) -> JsonValue:
+        result = await self._rollouts[rollout_id]
         model_patch = await self.env.materialize_grading_sandbox()
         return {
             "harness_sandbox_id": self.env.harness_sandbox.object_id,

@@ -29,7 +29,7 @@ class SwebenchOpenCodeEnvironment(Environment):
         self._harness_sandbox: modal.Sandbox | None = None
         self._grading_sandbox: modal.Sandbox | None = None
         self._image = ""
-        self._base_commit = ""
+        self._image_head = ""
         self.datapoint: dict[str, JsonValue] = {}
 
     @property
@@ -46,12 +46,7 @@ class SwebenchOpenCodeEnvironment(Environment):
 
     async def setup(self, env_params: dict[str, JsonValue]) -> None:
         params = SwebenchTaskParams.model_validate(env_params)
-        base_commit = params.datapoint.get("base_commit")
-        if not isinstance(base_commit, str):
-            raise ValueError("datapoint.base_commit is required")
-
         self._image = params.image
-        self._base_commit = base_commit
         self.datapoint = params.datapoint
 
         opencode_url = (
@@ -70,6 +65,14 @@ class SwebenchOpenCodeEnvironment(Environment):
             )
         )
         self._harness_sandbox = await self._create_sandbox(image)
+
+        # The image commits its setup edits on top of base_commit, so diff from its HEAD.
+        head = await run_command(
+            self.harness_sandbox, "git rev-parse HEAD", timeout_seconds=60
+        )
+        if head.returncode != 0:
+            raise RuntimeError(f"Failed to read image commit: {head.stderr}")
+        self._image_head = head.stdout.strip()
 
         task_grant = await asyncio.to_thread(blob_download_url, params.task_blob)
         result = await run_command(
@@ -105,9 +108,9 @@ tar -xzf /tmp/task.tar.gz -C /task
             """
 set -euo pipefail
 git add --intent-to-add .
-git diff --binary "$BASE_COMMIT"
+git diff --binary "$IMAGE_HEAD"
 """,
-            env={"BASE_COMMIT": self._base_commit},
+            env={"IMAGE_HEAD": self._image_head},
             timeout_seconds=300,
         )
         if patch_result.returncode != 0:
