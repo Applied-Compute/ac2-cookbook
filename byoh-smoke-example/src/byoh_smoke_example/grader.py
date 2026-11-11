@@ -2,7 +2,7 @@ from ac2.harness.types import RolloutStatus
 from ac2.runtime import EnvironmentProtocol, Grader, GraderOutput, Trace
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from .models import MinimalOutput
+from .models import HarnessOutput
 
 
 class _GraderParams(BaseModel):
@@ -13,10 +13,10 @@ class _GraderParams(BaseModel):
 
 class _RolloutOutput(BaseModel):
     status: RolloutStatus
-    outputs: MinimalOutput
+    outputs: HarnessOutput
 
 
-class MinimalGrader(Grader):
+class AnswerGrader(Grader):
     async def _grade(
         self,
         grader_params: dict[str, JsonValue] | None,

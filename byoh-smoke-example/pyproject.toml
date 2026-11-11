@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "byoh-minimal-api"
+name = "byoh-smoke-example"
 version = "0.1.0"
-description = "Smallest self-hosted AC2 harness: one model call per rollout."
+description = "Self-hosted AC2 harness smoke example: one model call per rollout."
 requires-python = ">=3.12"
 dependencies = [
     "ac2>=0.3.46",
@@ -23,7 +23,7 @@ harness = [
 package = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/byoh_minimal_api"]
+packages = ["src/byoh_smoke_example"]
 
 [[tool.uv.index]]
 name = "ac2"

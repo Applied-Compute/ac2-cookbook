@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class MinimalOutput(BaseModel):
+class HarnessOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     answer: str

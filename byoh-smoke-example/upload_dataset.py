@@ -14,8 +14,8 @@ TASKS = (
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="byoh-minimal-api")
-    parser.add_argument("--dataset", default="byoh-minimal-eval")
+    parser.add_argument("--project", default="byoh-smoke-example")
+    parser.add_argument("--dataset", default="byoh-smoke-eval")
     args = parser.parse_args()
 
     client = Client(project=args.project)
@@ -24,7 +24,7 @@ def main() -> None:
     except DatasetNotFoundError:
         client.datasets.create(
             args.dataset,
-            description="Factual questions for a minimal self-hosted BYOH harness.",
+            description="Factual questions for a self-hosted BYOH smoke test.",
         )
     client.datasets.add_tasks(
         args.dataset,

@@ -22,12 +22,14 @@ FROM python:3.12-alpine
 
 RUN apk upgrade --no-cache && python -m pip uninstall --yes pip
 
-COPY --from=build /app/.venv /app/.venv
-COPY harness_server.py /app/
+WORKDIR /app
+
+COPY --from=build /app/.venv .venv
+COPY harness_server.py .
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
 USER 65532:65532
 
-ENTRYPOINT ["python", "/app/harness_server.py", "--host", "0.0.0.0"]
+ENTRYPOINT ["uvicorn", "harness_server:app", "--host", "0.0.0.0", "--port", "8000"]
