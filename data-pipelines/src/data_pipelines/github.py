@@ -52,7 +52,7 @@ def make_tasks(*, pull_requests: Sequence[dict[str, str]]) -> list[Task]:
         response.raise_for_status()
         patch = response.text[:30_000]
         generated = model.chat.completions.parse(
-            model="gpt-4o-mini",
+            model="gpt-5.6-luna",
             messages=[
                 {"role": "system", "content": "Create one self-contained code-review question from this public merged PR. Do not ask for unseen repository context. Give a concise reference answer and a rubric. Return only task material grounded in the diff."},
                 {"role": "user", "content": f"PR: {pull_request['title']}\nDescription: {pull_request['body']}\nPatch:\n{patch}"},
@@ -62,11 +62,11 @@ def make_tasks(*, pull_requests: Sequence[dict[str, str]]) -> list[Task]:
         if generated is None:
             raise RuntimeError(f"Task generation returned no result for {pull_request['url']}")
         baseline = model.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.6-luna",
             messages=[{"role": "user", "content": generated.question}],
         ).choices[0].message.content or ""
         review = model.chat.completions.parse(
-            model="gpt-4o-mini",
+            model="gpt-5.6-luna",
             messages=[
                 {"role": "system", "content": "Score the answer against the rubric. Score 1 only when it meets the rubric; return a score from 0 to 1 and a short reason."},
                 {"role": "user", "content": f"Rubric: {generated.rubric}\nReference: {generated.reference_answer}\nAnswer: {baseline}"},
