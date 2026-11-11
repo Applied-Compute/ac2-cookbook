@@ -13,7 +13,7 @@ class DapoMathAgent(Agent):
     description = "Math agent with check_answer and finish tools."
     system_prompt = SYSTEM_PROMPT
 
-    def __init__(self, model: str = "gpt-5-mini") -> None:
+    def __init__(self, model: str = "gpt-5.6-luna") -> None:
         self.model_configuration = ModelConfiguration(
             model=model,
             kwargs={"reasoning": {"summary": "detailed"}},
