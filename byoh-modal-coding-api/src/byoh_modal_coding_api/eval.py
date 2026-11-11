@@ -13,7 +13,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="byoh-modal-coding-api")
     parser.add_argument("--dataset", default="byoh-modal-coding-eval")
-    parser.add_argument("--model", default="gpt-5-mini")
+    parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
 
     client = Client(project=args.project)
