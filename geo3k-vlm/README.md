@@ -11,8 +11,8 @@ this project in your organization:
 
 ```bash
 export AC2_ORG_ID='your-org-id'
-ac2 project init
-uv sync --locked
+uv sync
+uv run ac2 project init
 export AC2_PROJECT='geo3k-vlm'
 ```
 
@@ -35,10 +35,9 @@ The config in `src/geo3k_vlm/train.py` selects the
 enables image training. AC2 supplies the training model to the agent and
 resolves GPU topology from the catalog.
 
-Push your code branch, then submit to your Dispatch cluster:
+Submit to your Dispatch cluster. The submission uploads the project folder:
 
 ```bash
-ac2 project push
 uv run python -m geo3k_vlm.train --cluster YOUR_CLUSTER_ID
 ```
 
@@ -53,7 +52,7 @@ the AC2 platform, or follow logs with:
 
 ```bash
 ac2 train get TRAIN_ID
-ac2 train logs TRAIN_ID
+ac2 train logs -f TRAIN_ID
 ```
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
