@@ -17,7 +17,7 @@ HINTER_PATH = f"{SalesEmailJudgeHinter.__module__}.{SalesEmailJudgeHinter.__name
 
 
 def training_config(
-    mode: Mode = "online",
+    mode: Mode = "one_step",
     *,
     model: str = BASE_MODEL,
     steps: int = 20,
@@ -61,7 +61,7 @@ CONFIGS = {mode: training_config(mode) for mode in ("offline", "one_step", "onli
 def main() -> None:
     parser = argparse.ArgumentParser(description="Submit an OPSD run; all modes allocate training compute.")
     parser.add_argument("--project", default="sales-email-opsd")
-    parser.add_argument("--mode", choices=CONFIGS, default="online")
+    parser.add_argument("--mode", choices=CONFIGS, default="one_step")
     parser.add_argument("--model", default=BASE_MODEL)
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--smoke", action="store_true", help="One training step over at most ten tasks")

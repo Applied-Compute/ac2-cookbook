@@ -64,11 +64,12 @@ uv run python -m sales_email_opsd.eval --api-model gpt-5-mini --num-tasks 2
 
 The provider-model check is not the Qwen training baseline.
 
-Choose one training mode:
+Choose one training mode; `one_step` is the default:
 
 ```bash
-uv run python -m sales_email_opsd.train_opsd --mode offline --smoke
-uv run python -m sales_email_opsd.train_opsd --mode one_step
+uv run python -m sales_email_opsd.train_opsd --smoke
+uv run python -m sales_email_opsd.train_opsd
+uv run python -m sales_email_opsd.train_opsd --mode offline
 uv run python -m sales_email_opsd.train_opsd --mode online
 ```
 
@@ -116,7 +117,7 @@ pass in `clean`, output validity, and run failures. Inspect drafts for preserved
 facts, the intended call to action, and useful content. Thirty conversations give
 a small demonstration, not a broad estimate of generalization.
 
-With the defaults (online, 20 steps), the held-out score went from 0.10 before
+In online mode with 20 steps, the held-out score went from 0.10 before
 training to 0.32 at step 10 and 0.20 at step 20; dashes per conversation fell from
 6.1 to 3.5 at step 10. A second run reproduced the peak (0.09 to 0.29 at step 10).
 The gain peaks around step 10 and partly fades by step 20.
