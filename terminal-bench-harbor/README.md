@@ -1,16 +1,22 @@
-# Modal coding agent through a self-hosted harness
+# Terminal-Bench through Harbor on a self-hosted harness
 
 This example shows the
 [self-hosted BYOH deployment model](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted)
 when the Harness API is a facade over an existing execution system rather than
 the place where the agent itself runs.
 
-The API starts Harbor's public
-[`harbor/hello-world@latest`](https://hub.harborframework.com/datasets/harbor/hello-world/latest)
-task with OpenCode in a Modal sandbox. Harbor, Modal, the coding agent, and the
+The API runs [Terminal-Bench 2.0](https://www.tbench.ai/) tasks with OpenCode in
+Modal sandboxes through [Harbor](https://github.com/harbor-framework/harbor),
+the harness Terminal-Bench ships with. Harbor, Modal, the coding agent, and the
 verifier all run in your infrastructure. AC2 connects the agent to the model
 selected for the job, records the trace, and accepts the verifier reward
 returned by the API.
+
+The tasks are Harbor's
+[`terminal-bench/terminal-bench-2`](https://hub.harborframework.com/datasets/terminal-bench/terminal-bench-2)
+dataset: 89 tasks, each with its own container image, instruction, and tests.
+Terminal-Bench 2.0 is released under the
+[Apache License 2.0](https://github.com/harbor-framework/terminal-bench-2/blob/main/LICENSE).
 
 ## What this example teaches
 
@@ -20,7 +26,8 @@ This is an **external execution and grading in your infrastructure** pattern:
   the FastAPI process.
 - Harbor and Modal own the task sandbox and agent lifecycle.
 - Harbor's verifier computes the reward in your infrastructure.
-- `/collect_outputs` returns that reward, and the AC2 grader passes it through.
+- `/collect_score` returns that reward as the AC2 score. There is no AC2-side
+  grader.
 
 The example keeps the Harbor job handles and outputs in memory for readability.
 In production, store the mapping from rollout ID to scheduler job ID in a
@@ -39,6 +46,10 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
 - `/get_status` translates Harbor job state into the BYOH status contract.
 - `/collect_outputs` caches and returns Harbor's job IDs, verifier rewards, and
   error metadata.
+- `/submit_grading`, `/get_grading_status`, and `/collect_score` are the grading
+  half of the contract. Harbor has already run the task's tests by the time the
+  rollout finishes, so grading completes at once and `/collect_score` returns
+  the verifier reward. A trial that produced no reward scores 0.
 
 The server gives OpenCode the rollout-scoped `ac_api_url` and `ac_api_key` from
 `/submit`. OpenCode therefore uses the model selected by AC2, and AC2 records
@@ -50,14 +61,15 @@ requests to these private HTTP endpoints.
 
 ## How a rollout moves through the example
 
-1. `eval.py` or `train.py` starts an AC2 job for the Harbor task.
+1. `eval.py` or `train.py` starts an AC2 job over the Terminal-Bench tasks.
 2. The AC2 job sends `/submit` through the Harness Gateway and Connector.
-3. `harness_server.py` starts a Harbor job in Modal.
+3. `harness_server.py` starts a Harbor job in Modal for the one Terminal-Bench
+   task named in the request.
 4. Harbor launches OpenCode, which uses the model endpoint supplied by AC2.
-5. Harbor runs the task verifier after the agent finishes.
+5. Harbor runs the task's tests after the agent finishes.
 6. The Connector reports the terminal status and AC2 requests
    `/collect_outputs`.
-7. `grader.py` reads the returned Harbor reward and passes it through as the
+7. AC2 requests grading and `/collect_score` returns the Harbor reward as the
    AC2 score.
 
 Harbor and your rollout code stay in your network; they do not run inside the
@@ -69,10 +81,9 @@ AC2 job.
 | --- | --- |
 | `harness_server.py` | Your Harness API and Harbor job coordinator |
 | `src/terminal_bench_harbor/models.py` | Harbor task settings and JSON output contract |
-| `src/terminal_bench_harbor/grader.py` | AC2-side validation and pass-through of the reward computed in your infrastructure |
-| `src/terminal_bench_harbor/eval.py` | Eval configuration that selects the self-hosted lifecycle |
+| `src/terminal_bench_harbor/eval.py` | Eval over the whole dataset through the self-hosted lifecycle |
 | `src/terminal_bench_harbor/train.py` | One-step connector-backed GRPO training configuration |
-| `upload_dataset.py` | Creates the AC2 dataset entry that identifies the Harbor task |
+| `upload_dataset.py` | Downloads the tasks through Harbor and creates one AC2 task per Terminal-Bench task |
 
 ## Adapt it to your harness
 
@@ -83,12 +94,12 @@ For your own use case:
 2. Replace `HarborDataset` with the private task IDs and execution settings your
    server needs.
 3. Translate your scheduler's states in `/get_status`.
-4. Replace `CodingRolloutOutput` with the artifacts, score, and metadata your
-   grader needs.
+4. Replace `CodingRolloutOutput` with the artifacts and metadata you want
+   recorded, and return your own score from `/collect_score`.
 5. Persist idempotency keys, job IDs, and cached outputs before running multiple
    replicas or relying on restart recovery.
 
-The `/submit`, `/get_status`, and `/collect_outputs` routes stay the same.
+The routes stay the same.
 
 ## Set up the project
 
@@ -101,8 +112,12 @@ Harness API dependencies:
 ac2 project init
 uv sync --extra harness
 uv run modal setup
-uv run python upload_dataset.py
+uv run --extra harness python upload_dataset.py
 ```
+
+`upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset. Each
+AC2 task carries the task instruction as its input and the Harbor dataset,
+pinned version, and task name as `env_params`.
 
 Modal credentials remain on your machine. Store the model provider key
 in the project:
@@ -180,6 +195,10 @@ In a third terminal without the connector environment variables:
 uv run python -m terminal_bench_harbor.eval
 ```
 
+The eval runs every task in the dataset with `gpt-5.6-luna`, four at a time.
+Each task starts its own Modal sandbox and may run up to the agent timeout
+Terminal-Bench sets for it, which ranges from 10 minutes to over 3 hours.
+
 If connector credentials were previously saved globally, remove them first:
 
 ```bash
@@ -197,5 +216,8 @@ smoke test:
 uv run python -m terminal_bench_harbor.train
 ```
 
-The default configuration runs one GRPO step with two customer-hosted Harbor
-rollouts. Pass `--steps` to run more steps.
+The default configuration trains `Qwen/Qwen3-4B` for one GRPO step: one
+Terminal-Bench task, two Harbor rollouts. Training calls the model being
+trained, so it needs no OpenAI key. Pass `--steps` to run more steps. `train.py`
+sets `rollout_sample_timeout` to 30 minutes; raise it to train on the longer
+tasks.

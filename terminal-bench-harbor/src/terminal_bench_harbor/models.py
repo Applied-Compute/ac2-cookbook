@@ -6,6 +6,7 @@ class HarborDataset(BaseModel):
 
     name: str
     ref: str = "latest"
+    task_name: str
 
 
 class CodingRolloutOutput(BaseModel):

@@ -11,10 +11,14 @@ from typing import Annotated
 
 import uvicorn
 from ac2.harness.types import (
+    GradingStatus,
+    GradingStatusResponse,
     HarnessTask,
     RolloutRequest,
     RolloutStatus,
+    ScoreResponse,
     StatusResponse,
+    SubmitGradingRequest,
     SubmitPayload,
 )
 from ac2.runtime import Message
@@ -137,6 +141,36 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
     async def collect_outputs(request: RolloutRequest) -> CodingRolloutOutput:
         return await harness.outputs(request.rollout_id)
 
+    @app.post("/submit_grading")
+    async def submit_grading(request: SubmitGradingRequest) -> None:
+        harness.status(request.rollout_id)
+
+    @app.post("/get_grading_status", response_model=GradingStatusResponse)
+    async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
+        output = await harness.outputs(request.rollout_id)
+        if output.error is None and "reward" not in (output.rewards or {}):
+            return GradingStatusResponse(
+                status=GradingStatus.failed,
+                error_message="Harbor verifier did not produce a reward",
+            )
+        return GradingStatusResponse(status=GradingStatus.completed)
+
+    @app.post("/collect_score", response_model=ScoreResponse)
+    async def collect_score(request: RolloutRequest) -> ScoreResponse:
+        output = await harness.outputs(request.rollout_id)
+        if "reward" not in (output.rewards or {}):
+            return ScoreResponse(
+                score=0,
+                reasoning=f"Harbor trial failed: {output.error}",
+                artifacts={"trial_uri": output.trial_uri},
+            )
+        reward = output.rewards["reward"]
+        return ScoreResponse(
+            score=reward,
+            reasoning=f"Harbor verifier reward={reward}",
+            artifacts={"rewards": output.rewards, "trial_uri": output.trial_uri},
+        )
+
     return app
 
 
@@ -214,7 +248,13 @@ async def _run_harbor(
                 )
             ],
             environment=EnvironmentConfig(type=EnvironmentType.MODAL),
-            datasets=[DatasetConfig(name=dataset.name, ref=dataset.ref)],
+            datasets=[
+                DatasetConfig(
+                    name=dataset.name,
+                    ref=dataset.ref,
+                    task_names=[dataset.task_name],
+                )
+            ],
         )
     )
     return await job.run()

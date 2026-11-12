@@ -4,9 +4,7 @@ import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
-
-from .grader import HarborRewardGrader
+from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
 
 async def main() -> None:
@@ -19,9 +17,8 @@ async def main() -> None:
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            grader=HarborRewardGrader(),
-            dataset=DatasetSource(dataset=args.dataset, num_tasks=1),
-            max_parallel=1,
+            dataset=args.dataset,
+            max_parallel=4,
             name="terminal-bench-harbor",
             custom_harness=CustomHarnessConfig(
                 model=ModelConfiguration(
