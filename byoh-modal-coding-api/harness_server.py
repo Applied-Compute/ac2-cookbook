@@ -33,7 +33,6 @@ ACP_AGENT = "opencode@1.18.10"
 
 
 class PinnedAcpAgent(AcpAgent):
-    # Harbor installs the ACP client unpinned, but its runner needs the pre-1.0 API.
     def _build_dependencies_command(self, kind: str) -> str:
         command = super()._build_dependencies_command(kind)
         unpinned = "pip install agent-client-protocol\n"
