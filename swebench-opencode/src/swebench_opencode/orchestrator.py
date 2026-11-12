@@ -23,6 +23,8 @@ OUTPUT_METADATA_LIMIT = 4_000
 
 
 class SwebenchOpenCodeOrchestrator(CustomHarnessOrchestrator):
+    agent_name = "opencode"
+    agent_description = "OpenCode operating on SWE-bench tasks."
     POLLING_INTERVAL_S = 1
     ROLLOUT_TIMEOUT_S = ROLLOUT_TIMEOUT_SECONDS + 5 * 60
 
@@ -78,6 +80,8 @@ class SwebenchOpenCodeOrchestrator(CustomHarnessOrchestrator):
             "harness_sandbox_id": self.env.harness_sandbox.object_id,
             "grading_sandbox_id": self.env.sandbox.object_id,
             "model_patch_bytes": len(model_patch.encode()),
+            "patch_reconstruction_ok": self.env.model_patch_error is None,
+            "patch_error": self.env.model_patch_error,
             "returncode": result.returncode,
             "stdout": result.stdout[-OUTPUT_METADATA_LIMIT:],
             "stderr": result.stderr[-OUTPUT_METADATA_LIMIT:],

@@ -30,6 +30,7 @@ class SwebenchOpenCodeEnvironment(Environment):
         self._grading_sandbox: modal.Sandbox | None = None
         self._image = ""
         self._image_head = ""
+        self._model_patch_error: str | None = None
         self.datapoint: dict[str, JsonValue] = {}
 
     @property
@@ -44,9 +45,14 @@ class SwebenchOpenCodeEnvironment(Environment):
             raise RuntimeError("OpenCode harness sandbox is not running")
         return self._harness_sandbox
 
+    @property
+    def model_patch_error(self) -> str | None:
+        return self._model_patch_error
+
     async def setup(self, env_params: dict[str, JsonValue]) -> None:
         params = SwebenchTaskParams.model_validate(env_params)
         self._image = params.image
+        self._model_patch_error = None
         self.datapoint = params.datapoint
 
         opencode_url = (
@@ -118,10 +124,49 @@ git diff --binary "$IMAGE_HEAD"
         self._grading_sandbox = await self._create_sandbox(
             modal.Image.from_registry(self._image).entrypoint([])
         )
+
+        head_result = await run_command(
+            self.sandbox, "git rev-parse HEAD", timeout_seconds=60
+        )
+        if head_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to verify grading sandbox image commit: {head_result.stderr.strip()}"
+            )
+        if head_result.stdout.strip() != self._image_head:
+            raise RuntimeError(
+                "Grading sandbox does not match the harness image commit: "
+                f"expected {self._image_head}, got {head_result.stdout.strip()}"
+            )
+        status_result = await run_command(
+            self.sandbox,
+            "git status --porcelain --untracked-files=no",
+            timeout_seconds=60,
+        )
+        if status_result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to verify grading sandbox worktree: {status_result.stderr.strip()}"
+            )
+        if status_result.stdout.strip():
+            raise RuntimeError(
+                f"Grading sandbox has pre-existing tracked changes: {status_result.stdout.strip()}"
+            )
+
         if patch_result.stdout:
             await self.sandbox.filesystem.write_text.aio(
                 patch_result.stdout, "/tmp/model.patch"
             )
+            check_result = await run_command(
+                self.sandbox,
+                "git apply --check --binary /tmp/model.patch",
+                timeout_seconds=300,
+            )
+            if check_result.returncode != 0:
+                self._model_patch_error = (
+                    check_result.stderr.strip()
+                    or f"git apply --check exited with code {check_result.returncode}"
+                )
+                return patch_result.stdout
+
             apply_result = await run_command(
                 self.sandbox,
                 "git apply --binary /tmp/model.patch",
@@ -129,7 +174,8 @@ git diff --binary "$IMAGE_HEAD"
             )
             if apply_result.returncode != 0:
                 raise RuntimeError(
-                    f"Failed to apply model patch: {apply_result.stderr}"
+                    "Patch passed git apply --check but failed during application: "
+                    f"{apply_result.stderr}"
                 )
         return patch_result.stdout
 
