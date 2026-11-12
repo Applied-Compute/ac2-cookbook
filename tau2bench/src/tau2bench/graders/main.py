@@ -326,14 +326,16 @@ class Tau2BenchGrader(LLMGrader):
                               (default ``[DB, COMMUNICATE]``)
     """
 
-    model_config = ModelConfiguration(model="gpt-5-mini")
+    model_config = ModelConfiguration(model="gpt-5.6-luna")
 
     async def _grade(
         self,
         grader_params: dict | None,
         trace: Trace,
-        env: EnvironmentProtocol,
+        env: EnvironmentProtocol | None,
     ) -> GraderOutput:
+        if env is None:
+            raise ValueError(f"{type(self).__name__} grades inside an environment and was given none")
         params = grader_params or {}
 
         if getattr(env, "terminated", False) and not _was_transfer_to_human(trace):
