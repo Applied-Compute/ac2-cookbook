@@ -29,6 +29,20 @@ class SwebenchVerifiedGrader(Grader):
             raise TypeError("SwebenchVerifiedGrader requires SwebenchOpenCodeEnvironment")
 
         params = SwebenchGraderParams.model_validate(grader_params or {})
+        if env.model_patch_error is not None:
+            return GraderOutput(
+                score=0.0,
+                reasoning=(
+                    "model patch could not be applied to the verified task base; "
+                    "scored as an invalid submission"
+                ),
+                artifacts={
+                    "resolved": False,
+                    "patch_applied": False,
+                    "patch_error": env.model_patch_error[:2_000],
+                },
+            )
+
         test_spec = make_test_spec(
             cast(SWEbenchInstance, params.datapoint),
             namespace="swebench",
