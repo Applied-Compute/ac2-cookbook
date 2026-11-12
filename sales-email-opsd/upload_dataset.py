@@ -9,7 +9,7 @@ from ac2.runtime import Task
 from ac2.sdk import Client, DatasetNotFoundError
 
 from sales_email_opsd.data import load_conversations
-from sales_email_opsd.dataset import EVAL_DATASET, ONLINE_TRAIN_DATASET, TRAIN_DATASET, build_tasks
+from sales_email_opsd.dataset import EVAL_DATASET, TRAIN_DATASET, build_tasks
 
 TRACES = Path(__file__).resolve().parent / "data" / "traces.jsonl"
 
@@ -43,11 +43,7 @@ def main() -> None:
     parser.add_argument("--project", default="sales-email-opsd")
     args = parser.parse_args()
     tasks = build_tasks(load_conversations(TRACES))
-    datasets = {
-        TRAIN_DATASET: tasks.one_step,
-        ONLINE_TRAIN_DATASET: tasks.online,
-        EVAL_DATASET: tasks.evaluation,
-    }
+    datasets = {TRAIN_DATASET: tasks.one_step, EVAL_DATASET: tasks.evaluation}
     upload(Client(project=args.project), datasets)
 
 

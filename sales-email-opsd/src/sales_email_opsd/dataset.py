@@ -1,4 +1,4 @@
-"""Build replay, online, and held-out tasks from a single conversation split."""
+"""Build replay and held-out tasks from a single conversation split."""
 
 from __future__ import annotations
 
@@ -12,14 +12,12 @@ from .dashes import POLICY, POLICY_VERSION, find_dashes
 from .data import Conversation
 
 TRAIN_DATASET = "sales-email-opsd-train-v2"
-ONLINE_TRAIN_DATASET = "sales-email-opsd-online-train-v2"
 EVAL_DATASET = "sales-email-eval-v2"
 
 
 @dataclass(frozen=True)
 class TaskSets:
     one_step: list[Task]
-    online: list[Task]
     evaluation: list[Task]
 
 
@@ -107,6 +105,5 @@ def build_tasks(records: list[Conversation], *, max_boundaries: int = 3) -> Task
         raise ValueError("No training replies violate the style policy")
     return TaskSets(
         one_step=one_step,
-        online=[conversation_task(record) for record in train],
         evaluation=[conversation_task(record) for record in held_out],
     )

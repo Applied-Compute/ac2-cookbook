@@ -10,7 +10,7 @@ Sonnet 4.5, not customer production traces.
 ## Set up and upload the datasets
 
 Install and authenticate [AC2](https://docs.appliedcompute.com/quickstart). Requires
-Python 3.12+ and AC2 0.3.73+. From this directory:
+Python 3.12+ and AC2 0.3.79+. From this directory:
 
 ```bash
 ac2 projects init
@@ -24,7 +24,6 @@ upload, eval, train, and deploy commands for your own project.
 | Dataset | Tasks | Use |
 | --- | ---: | --- |
 | `sales-email-opsd-train-v2` | 347 | Offline replay or one-step sampling |
-| `sales-email-opsd-online-train-v2` | 120 | Full conversations with live hints |
 | `sales-email-eval-v2` | 30 | Held-out conversations, with no hints |
 
 `upload_dataset.py` builds every task from the conversations without model calls
@@ -38,10 +37,9 @@ that reply, and the hint is appended to the rep's request; future turns are excl
 
 Hints quote exact offending excerpts and ask the teacher to apply the shared style
 policy while preserving meaning. A deterministic hint template is sufficient for
-this mechanically detectable behavior. Online mode uses a model to write the hint
-from the live rollout instead: `SalesEmailJudgeHinter` in `hinter.py`, passed to
-training as `rmsd_hinter_path`, picks the first reply that uses dash punctuation,
-quotes up to three offending phrases, and rewrites each one without the dash.
+this mechanically detectable behavior. `SalesEmailJudgeHinter` in `hinter.py` has a
+model write each hint instead: it quotes up to three offending phrases from the
+selected reply and rewrites each one without the dash (see "Model-written hints").
 
 Repeating an upload is a no-op, and an interrupted upload resumes missing tasks. If a
 dataset already holds different tasks, the upload stops; choose new names in
@@ -59,36 +57,28 @@ This is a remote eval that allocates a model server. For a small functional chec
 using a provider model, register that provider's key as an AC2 secret and run:
 
 ```bash
-uv run python -m sales_email_opsd.eval --api-model gpt-5-mini --num-tasks 2
+uv run python -m sales_email_opsd.eval --api-model gpt-5.6-luna --num-tasks 2
 ```
 
 The provider-model check is not the Qwen training baseline.
 
-Choose one training mode:
+Choose one training mode; `one_step` is the default:
 
 ```bash
-uv run python -m sales_email_opsd.train_opsd --mode offline --smoke
-uv run python -m sales_email_opsd.train_opsd --mode one_step
-uv run python -m sales_email_opsd.train_opsd --mode online
+uv run python -m sales_email_opsd.train_opsd --smoke
+uv run python -m sales_email_opsd.train_opsd
+uv run python -m sales_email_opsd.train_opsd --mode offline
 ```
 
 | Mode | Student response | Teacher context |
 | --- | --- | --- |
 | `offline` | Recorded selected reply | Prefix plus stored hint |
 | `one_step` | Newly sampled selected reply | Prefix plus stored hint |
-| `online` | Newly sampled full conversation | Live prefix plus generated hint |
 
 Every mode allocates training compute. `--smoke` means one training step over at
 most ten tasks, not an offline unit test. Defaults are Qwen3-4B, 20 steps, seed 42,
-eight prompts per batch, and one sample per prompt. Online mode evaluates the held-out
-set before training and during it. Offline and one-step mode use separate eval runs
-after training.
-
-Online mode simulates the rep with `gpt-4.1` so each conversation reacts to the
-student's drafts; `--replay-user` replays the recorded rep turns instead. It also
-uses `gpt-5-mini` twice: as the hint writer, and as a token judge that selects which
-response tokens receive RMSD loss (`--no-token-judge` trains on every token). Store
-`OPENAI_API_KEY` in your AC2 project's secrets.
+eight prompts per batch, and one sample per prompt. Training runs no eval; use
+separate eval runs after training.
 
 Find a checkpoint ID in the run's checkpoint list, then evaluate it:
 
@@ -101,19 +91,35 @@ Both remote eval commands use all 30 held-out tasks, one sample per task, and
 temperature 0. The default user policy replays the same recorded requests and
 followups for each model. This holds the user inputs fixed, although recorded
 feedback can fit a new draft imperfectly. Use `--simulate-user` on eval for
-adaptive conversations like online training's; that adds provider cost and makes a
+adaptive conversations (`gpt-5.6-luna` plays the rep); that adds provider cost and makes a
 paired comparison less controlled. Simulator errors fail the rollout instead of
 silently ending a successful conversation.
+
+Deploy the agent on a provider model or a served endpoint:
+
+```bash
+uv run python -m sales_email_opsd.deploy --model gpt-5.6-luna
+```
 
 Compare the **score** (share of dash-free replies), `dashes_per_1k_words`, the strict
 pass in `clean`, output validity, and run failures. Inspect drafts for preserved
 facts, the intended call to action, and useful content. Thirty conversations give
 a small demonstration, not a broad estimate of generalization.
 
-With the defaults (online, 20 steps), the held-out score went from 0.10 before
-training to 0.32 at step 10 and 0.20 at step 20; dashes per conversation fell from
-6.1 to 3.5 at step 10. A second run reproduced the peak (0.09 to 0.29 at step 10).
-The gain peaks around step 10 and partly fades by step 20.
+## Model-written hints
+
+To train on hints written by a model instead of the template, run the hinter over
+the replay dataset. It calls `gpt-5.6-luna` once per task, so store the provider key
+first: `ac2 secrets put --key OPENAI_API_KEY --value <val>`.
+
+```bash
+ac2 -p sales-email-opsd hinter run --hinter SalesEmailJudgeHinter --source-dataset sales-email-opsd-train-v2
+uv run python -m sales_email_opsd.train_opsd --dataset SalesEmailJudgeHinter-hinted-sales-email-opsd-train-v2
+```
+
+The hinter run publishes `SalesEmailJudgeHinter-hinted-sales-email-opsd-train-v2`:
+the same replay tasks with each stored hint replaced by the model's. The source
+dataset is unchanged.
 
 ## What the grader measures
 
