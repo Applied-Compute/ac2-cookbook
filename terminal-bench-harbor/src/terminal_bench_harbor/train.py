@@ -9,8 +9,8 @@ from .grader import HarborRewardGrader
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="byoh-modal-coding-api")
-    parser.add_argument("--dataset", default="byoh-modal-coding-eval")
+    parser.add_argument("--project", default="terminal-bench-harbor")
+    parser.add_argument("--dataset", default="terminal-bench")
     parser.add_argument("--model", default="Qwen/Qwen3-4B")
     parser.add_argument("--steps", type=int, default=1)
     args = parser.parse_args()
@@ -30,7 +30,7 @@ def main() -> None:
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
             rollout_sample_timeout=1_800,
-            name="byoh-modal-coding-api-smoke",
+            name="terminal-bench-harbor",
         )
     )
     print(run.train_id)

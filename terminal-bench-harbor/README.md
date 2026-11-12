@@ -68,10 +68,10 @@ AC2 job.
 | File | Responsibility |
 | --- | --- |
 | `harness_server.py` | Your Harness API and Harbor job coordinator |
-| `src/byoh_modal_coding_api/models.py` | Harbor task settings and JSON output contract |
-| `src/byoh_modal_coding_api/grader.py` | AC2-side validation and pass-through of the reward computed in your infrastructure |
-| `src/byoh_modal_coding_api/eval.py` | Eval configuration that selects the self-hosted lifecycle |
-| `src/byoh_modal_coding_api/train.py` | One-step connector-backed GRPO training configuration |
+| `src/terminal_bench_harbor/models.py` | Harbor task settings and JSON output contract |
+| `src/terminal_bench_harbor/grader.py` | AC2-side validation and pass-through of the reward computed in your infrastructure |
+| `src/terminal_bench_harbor/eval.py` | Eval configuration that selects the self-hosted lifecycle |
+| `src/terminal_bench_harbor/train.py` | One-step connector-backed GRPO training configuration |
 | `upload_dataset.py` | Creates the AC2 dataset entry that identifies the Harbor task |
 
 ## Adapt it to your harness
@@ -177,7 +177,7 @@ a connector that is killed outright is replaced after about a minute.
 In a third terminal without the connector environment variables:
 
 ```bash
-uv run python -m byoh_modal_coding_api.eval
+uv run python -m terminal_bench_harbor.eval
 ```
 
 If connector credentials were previously saved globally, remove them first:
@@ -194,7 +194,7 @@ With the Harness API and Harness Connector still running, start a training
 smoke test:
 
 ```bash
-uv run python -m byoh_modal_coding_api.train
+uv run python -m terminal_bench_harbor.train
 ```
 
 The default configuration runs one GRPO step with two customer-hosted Harbor

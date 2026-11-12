@@ -27,7 +27,7 @@ from harbor.models.job.result import JobResult
 from harbor.models.trial.config import AgentConfig, EnvironmentConfig
 from pydantic import BaseModel, ValidationError
 
-from byoh_modal_coding_api.models import CodingRolloutOutput, HarborDataset
+from terminal_bench_harbor.models import CodingRolloutOutput, HarborDataset
 
 ACP_AGENT = "opencode@1.18.10"
 
@@ -71,7 +71,7 @@ class ModalCodingHarness:
         rollout_id = f"coding_{uuid.uuid4().hex}"
         execution = asyncio.create_task(
             _run_harbor(rollout_id, request, dataset),
-            name=f"modal-coding-{rollout_id}",
+            name=f"terminal-bench-{rollout_id}",
         )
         self._rollouts[rollout_id] = _Rollout(execution=execution)
         self._submission_keys[idempotency_key] = rollout_id
@@ -196,7 +196,7 @@ async def _run_harbor(
     job = await Job.create(
         JobConfig(
             job_name=rollout_id,
-            jobs_dir=Path(tempfile.gettempdir()) / "byoh-modal-coding-api",
+            jobs_dir=Path(tempfile.gettempdir()) / "terminal-bench-harbor",
             n_concurrent_trials=1,
             quiet=True,
             agents=[

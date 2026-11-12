@@ -11,8 +11,8 @@ from .grader import HarborRewardGrader
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="byoh-modal-coding-api")
-    parser.add_argument("--dataset", default="byoh-modal-coding-eval")
+    parser.add_argument("--project", default="terminal-bench-harbor")
+    parser.add_argument("--dataset", default="terminal-bench")
     parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
 
@@ -22,7 +22,7 @@ async def main() -> None:
             grader=HarborRewardGrader(),
             dataset=DatasetSource(dataset=args.dataset, num_tasks=1),
             max_parallel=1,
-            name="byoh-modal-coding-api",
+            name="terminal-bench-harbor",
             custom_harness=CustomHarnessConfig(
                 model=ModelConfiguration(
                     model=args.model,
