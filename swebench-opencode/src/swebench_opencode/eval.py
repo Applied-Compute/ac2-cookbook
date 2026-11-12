@@ -14,7 +14,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="swebench-opencode")
     parser.add_argument("--dataset", default="swebench-opencode-smoke")
-    parser.add_argument("--model", default="gpt-5-mini")
+    parser.add_argument("--model", default="gpt-5.6-luna")
     parser.add_argument("--max-parallel", type=int, default=1)
     args = parser.parse_args()
 
