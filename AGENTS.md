@@ -1,62 +1,24 @@
 # Agent Guide
 
-Use this repository as a cookbook for AC2 starter projects. Keep user-facing
-READMEs short and runnable; put agent workflow guidance here.
+This repository holds runnable AC2 examples. Each one connects a self-hosted
+harness to AC2: a Harness API server the user runs, the Harness Connector
+(`ac2 harness connect`), and an eval and training job that call the harness.
 
-## Reference Path
+## Where to look
 
-1. Read `.claude/skills/ac2-companion/SKILL.md` for the AC2 workflow.
-2. Use `.claude/skills/ac2-companion/references/setup.md` for install and CLI setup.
-3. Use `.claude/skills/ac2-companion/references/runtime.md` for the `Agent`,
-   `Environment`, `Task`, `Grader`, and `Orchestrator` model.
-4. Use `.claude/skills/ac2-companion/references/datasets.md` before eval or training work.
-5. Use `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
-6. Use `.claude/skills/ac2-companion/references/training.md` for training submissions.
-7. Use `.claude/skills/ac2-companion/references/migrations.md` before porting another
-   framework into AC2.
+- `README.md` lists the examples.
+- `.claude/skills/ac2-companion/SKILL.md` describes the Harness API, the
+  connector, and the eval and training workflow.
+- `byoh-smoke-example/` is the smallest working harness. Read it before the
+  larger examples.
+- <https://docs.appliedcompute.com/llms.txt> indexes the AC2 docs.
 
-## Project Order
+## Editing guidelines
 
-1. `dapo-math-check/` for datasets, custom user policy, eval, and training.
-2. `tau2bench/` for simulated users, domain environments, remote eval, and training.
-
-## Editing Guidelines
-
-- Prefer existing AC2 primitives and local project patterns over new scaffolding.
-- Keep remote eval and training instructions explicit about projects, datasets, secrets,
-  commits, and pushed branches.
-- Avoid internal-only launchers, monorepo paths, or infrastructure names in user-facing
-  READMEs.
-- After editing a project, run the narrowest relevant tests or syntax checks for that
-  project and report what was run.
-# Agent Guide
-
-Use this repository as a cookbook for AC2 starter projects. Keep user-facing
-READMEs short and runnable; put agent workflow guidance here.
-
-## Reference Path
-
-1. Read `.claude/skills/ac2-companion/SKILL.md` for the AC2 workflow.
-2. Use `.claude/skills/ac2-companion/references/setup.md` for install and CLI setup.
-3. Use `.claude/skills/ac2-companion/references/runtime.md` for the `Agent`,
-   `Environment`, `Task`, `Grader`, and `Orchestrator` model.
-4. Use `.claude/skills/ac2-companion/references/datasets.md` before eval or training work.
-5. Use `.claude/skills/ac2-companion/references/eval-remote.md` for eval workflows.
-6. Use `.claude/skills/ac2-companion/references/training.md` for training submissions.
-7. Use `.claude/skills/ac2-companion/references/migrations.md` before porting another
-   framework into AC2.
-
-## Project Order
-
-1. `dapo-math-check/` for datasets, custom user policy, eval, and training.
-2. `tau2bench/` for simulated users, domain environments, remote eval, and training.
-
-## Editing Guidelines
-
-- Prefer existing AC2 primitives and local project patterns over new scaffolding.
-- Keep remote eval and training instructions explicit about projects, datasets, secrets,
-  commits, and pushed branches.
-- Avoid internal-only launchers, monorepo paths, or infrastructure names in user-facing
-  READMEs.
-- After editing a project, run the narrowest relevant tests or syntax checks for that
-  project and report what was run.
+- Keep each example's README short and runnable: upload the dataset, run a
+  baseline eval, run a short training job, eval the checkpoint.
+- Check every command against `ac2 <command> --help` and every SDK call against
+  the installed `ac2` package before writing it down.
+- State the project, dataset, model, and secrets each command needs.
+- After editing an example, run its narrowest relevant check and report what
+  was run.

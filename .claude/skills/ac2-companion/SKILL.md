@@ -1,122 +1,143 @@
 ---
 name: ac2-companion
-description: Helps users build, evaluate, deploy, and train agents on Applied Compute Agent Cloud (AC2). Use when the user mentions AC2, the `ac2` CLI, `ac2.runtime`/`ac2.sdk`/`ac2.tracing`, AC2 primitives (`Agent`/`Environment`/`Grader`/`Orchestrator`/`Task`), `EvalConfig`/`TrainingConfig`/`DeploymentConfig`, `ac2 eval run`/`ac2 train run`/`ac2 deployments run`, `client.eval.run`/`client.train.run`/`client.deployments.create`, dispatching to AC2 clusters (e.g. `ac-jurassic`), or `platform.appliedcompute.com` — even when "AC2" isn't said explicitly.
+description: Helps users connect their own agent harness to Applied Compute Agent Cloud (AC2) and run evals and training through it. Use when the user mentions AC2, the `ac2` CLI, a self-hosted or custom harness (BYOH), the Harness API (`/submit`, `/get_status`, `/collect_outputs`), the Harness Connector (`ac2 harness connect`), `CustomHarnessConfig`, `EvalConfig`, `TrainingConfig`, or `platform.appliedcompute.com`.
 argument-hint: "[task or question]"
-allowed-tools: Bash(ac2 config*) Bash(ac2 project*) Bash(ac2 eval*) Bash(ac2 train*) Bash(ac2 deployments*) Bash(ac2 jobs list*) Bash(ac2 datasets*) Bash(ac2 secrets*) Bash(uv run python*)
+allowed-tools: Bash(ac2 config show*) Bash(ac2 harness status*) Bash(ac2 eval get*) Bash(ac2 eval list*) Bash(ac2 eval logs*) Bash(ac2 train get*) Bash(ac2 train list*) Bash(ac2 train logs*) Bash(ac2 train checkpoints*) Bash(ac2 datasets list*) Bash(ac2 secrets list*)
 user-invocable: true
 ---
 
 # AC2 companion
 
-Help the user build, evaluate, deploy, and train agents on AC2 (Applied Compute Agent Cloud) using the `ac2` SDK and CLI.
+Help the user run evals and training on AC2 with a self-hosted harness: their
+agent, tools, and grading run on their infrastructure, and AC2 serves the model
+and runs the job.
 
-## How AC2 works
+Docs: <https://docs.appliedcompute.com/platform/custom-harnesses> and
+<https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted>. The
+index of all pages is <https://docs.appliedcompute.com/llms.txt>. When this file
+and the docs or `ac2 <command> --help` disagree, trust those.
 
-AC2 is a platform for building, evaluating, deploying, and post-training agents. Work is organized around **managed projects**: a Python package under `src/` that holds your runtime components. Build an `EvalConfig`, `TrainingConfig`, or `DeploymentConfig` from configured component instances and pass it to the matching `Client` method; AC2 packages the project and runs it.
+## The pieces
 
-- **Serving** — deploy an agent and open streaming sessions against it. `client.session.from_local`, `ac2 deployments run` / `client.deployments.create`, `client.session.from_remote`.
-- **Datasets** — upload, version, and share task sets. `client.datasets.*` / `upload_dataset.py`.
-- **Evaluation** — score an agent against a dataset with a grader. `ac2 eval run` / `client.eval.run`.
-- **Training** — post-train an agent on a dataset against a grader. `ac2 train run` / `client.train.run`.
+- **Harness API**: an HTTP server the user writes and runs. Start from
+  `byoh-smoke-example/harness_server.py`.
+- **Harness Connector**: `ac2 harness connect`. It connects out to AC2 and
+  forwards requests to the Harness API, so the server needs no inbound access.
+- **AC2 job**: an eval or training run started with the SDK. It sends each task
+  to the harness and serves the model the agent calls.
 
-The same runtime primitives (`Agent`, `Environment`, `Grader`, optionally `OrchestratorProtocol`) compose into every one of these — don't fork them per workflow.
+## Harness API
 
-The documentation index lives at <https://docs.appliedcompute.com/llms.txt> — fetch it to discover all available pages before exploring further.
+All endpoints are `POST` with JSON bodies. Request and response models are in
+`ac2.harness.types`.
 
-## Operating rules
+| Endpoint | Request | Response |
+| --- | --- | --- |
+| `/submit` | `ac_api_url`, `ac_api_key`, `task.input`, `task.env_params` | `rollout_id` |
+| `/get_status` | `rollout_id` | `status`, optional `error_message`, `annotations`, `spans` |
+| `/collect_outputs` | `rollout_id` | Any JSON |
 
-Prefer the AC2-native path before custom scaffolding:
+- `/submit` starts the work and returns at once. The server creates the
+  `rollout_id`. AC2 sends an `Idempotency-Key` header; return the same ID when a
+  key repeats.
+- The agent makes its model calls with an OpenAI-compatible client pointed at
+  `ac_api_url` with `ac_api_key`. That is how it reaches the model selected for
+  the job and how AC2 records the trace.
+- `status` is one of `queued`, `running`, `completed`, `failed`, `cancelled`,
+  `truncated`.
 
-1. Define the task contract: prompt shape, tool I/O, stop conditions, grading output, and success metrics.
-2. Use the smallest correct AC2 primitive: `Agent` for model behavior, `Environment` for tools and per-rollout state, `Task` for inputs/params, `Grader` for scoring, and `OrchestratorProtocol` only for multi-agent or custom control flow.
-3. Smoke-test deployable agents in a local session before remote work.
-4. Then move to platform workflows: upload datasets, register secrets, run eval, then train.
-5. Record exact commands, project, dataset, model, cluster, and any unresolved assumptions in the handoff.
+### Grading in the harness
 
-Do not hide platform or framework mismatches. If a construct from another framework does not map cleanly to AC2, explain the mismatch and use [migrations.md](references/migrations.md) before writing compatibility glue.
+When the eval or training config has no grader, AC2 asks the harness for the
+score through three more endpoints:
 
-## Quick start
+| Endpoint | Request | Response |
+| --- | --- | --- |
+| `/submit_grading` | `rollout_id`, `rollout_status`, `task.input`, `task.env_params`, `task.grader_params` | Ignored |
+| `/get_grading_status` | `rollout_id` | `status`, optional `error_message` |
+| `/collect_score` | `rollout_id` | `score`, optional `reasoning`, `artifacts` |
 
-`ac2.runtime` is the Python library for agents, environments, orchestrators, and graders. The shape of every AC2 program is the same:
+Grading `status` is one of `queued`, `running`, `completed`, `failed`,
+`cancelled`. These endpoints need an SDK whose `ac2.harness.types` defines
+`ScoreResponse`; run `ac2 upgrade` if it does not.
 
-1. Create an `Agent` (or subclass for custom hooks).
-2. Create an `Environment` (or subclass with `@tool` methods).
-3. Pass configured component instances (e.g. `MyAgent(...)`, `MyEnvironment()`, `MyGrader()`) to `EvalConfig`/`TrainingConfig`; `DeploymentConfig` takes class names (see `references/runtime.md`).
-4. Pass the config explicitly to the matching `Client` method from the managed project folder.
+## Workflow
 
-A complete local interactive loop:
+1. Install and log in: `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
+   Re-authenticate later with `ac2 login`.
+2. Register the project from its folder: `ac2 project init`.
+3. Upload the dataset with the example's `upload_dataset.py`. It uses
+   `client.datasets.create` and `client.datasets.add_tasks` with `Task` objects
+   (`id`, `input`, `env_params`, `grader_params`).
+4. Start the Harness API.
+5. Start the connector in its own terminal. An organization admin creates its
+   credentials once with `ac2 harness credentials create`.
+
+   ```bash
+   export AC2_SERVICE_CLIENT_ID=svc_...
+   export AC2_SERVICE_CLIENT_SECRET=...
+   ac2 harness connect --project-id <project-id> --upstream http://127.0.0.1:8000
+   ```
+
+   Add `--transport https` on networks that only pass plain HTTPS. Check
+   connections with `ac2 harness status`.
+6. Run a baseline eval from another terminal, without the connector variables.
+7. Run a short training job, then eval the checkpoint. Follow the example's
+   README for both.
+
+Eval and training configs select the connector by setting `custom_harness` and
+leaving out the agent, environment, and orchestrator:
 
 ```python
-import asyncio
+from ac2.runtime import ModelConfiguration
+from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
-from ac2.runtime import Agent, Environment, ModelConfiguration
-from ac2.sdk.client import Client
-
-
-class ExampleAgent(Agent):
-    description = "Answers questions."
-    model_configuration = ModelConfiguration(model="gpt-4o-mini")
-    system_prompt = "Answer concisely."
-
-
-class ExampleEnvironment(Environment):
-    pass
-
-client = Client(project="my-project")
-session = client.session.from_local(agent=ExampleAgent(), env=ExampleEnvironment())
-
-
-async def main() -> None:
-    async with session:
-        while True:
-            text = input("\n> ")
-            async for event in session.run(text):
-                if event.type == "text_delta":
-                    print(event.content, end="", flush=True)
-            print()
-
-
-asyncio.run(main())
+run = await Client(project="my-project").eval.run(
+    EvalConfig(
+        dataset="my-dataset",
+        custom_harness=CustomHarnessConfig(model=ModelConfiguration(model="<model>")),
+    )
+)
+print(run.eval_id)
 ```
 
-Managed projects use the standard package layout from `ac2 project init`:
+```python
+from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
-```text
-my-project/
-  pyproject.toml          # project metadata + [tool.ac2]
-  upload_dataset.py
-  src/my_project/
-    agent.py
-    environment.py
-    grader.py
-    eval.py               # CONFIG + runnable main()
-    train.py              # CONFIG + runnable main()
-    deploy.py             # CONFIG + runnable main()
+run = Client(project="my-project").train.run(
+    TrainingConfig(
+        model="<catalog-model>",
+        n_training_replicas=1,
+        n_inference_replicas=1,
+        samples_per_problem=2,
+        problem_batch_size=1,
+        num_train_steps=1,
+        ac2_train_dataset="my-dataset",
+        eval_mode="off",
+        custom_harness=TrainingCustomHarnessConfig(),
+    )
+)
+print(run.train_id)
 ```
 
-## Where to find more
+## Inspect a run
 
-Read only the reference file(s) the user's task actually needs.
+```bash
+ac2 eval get <eval-id>
+ac2 eval logs <eval-id>
+ac2 train get <train-id>
+ac2 train logs <train-id>
+ac2 train checkpoints <train-id>
+ac2 traces download <run-id>
+```
 
-- **Setup & install**: see [setup.md](references/setup.md) — install `ac2`, configure the CLI, `ac2 project init`
-- **Defining primitives**: see [runtime.md](references/runtime.md) — `Agent`, `Environment`, `Grader`, `Orchestrator`, `Task`
-- **Migrations**: see [migrations.md](references/migrations.md) — translate Claude Agents SDK, OpenAI Agents SDK, Prime Verifiers, Silverback, and generic harnesses to AC2
-- **Datasets**: see [datasets.md](references/datasets.md) — upload, version, list (`client.datasets.*`)
-- **Eval**: see [eval-remote.md](references/eval-remote.md) — `EvalConfig` + `ac2 eval run`
-- **Training**: see [training.md](references/training.md) — `TrainingConfig` + `ac2 train run`
-- **Deploy**: see [deploy.md](references/deploy.md) — `DeploymentConfig` + `ac2 deployments run`
-- **CLI**: see [cli.md](references/cli.md) — `ac2` command reference
-- **Troubleshooting**: see [troubleshooting.md](references/troubleshooting.md) — symptom → cause map; check this when something fails
+## Rules
 
-Datasets show up across eval-remote and training — load [datasets.md](references/datasets.md) alongside those workflows when the user needs to upload or share task sets.
-
-## Workflow order
-
-For a new AC2 user, follow [setup.md](references/setup.md) → [runtime.md](references/runtime.md) → [datasets.md](references/datasets.md) → [eval-remote.md](references/eval-remote.md) → [training.md](references/training.md). [deploy.md](references/deploy.md) is orthogonal — reach for it whenever the user wants an interactive endpoint, not just at the end.
-
-For a migration, start with [migrations.md](references/migrations.md), then read the runtime/eval/deploy/training reference that matches the target workflow. Preserve the old task contract first; only then simplify into idiomatic AC2.
-
-For examples in this cookbook, use the existing runnable projects:
-
-- `dapo-math-check` — custom user policy, stateful bounded tool, datasets, and training.
-- `tau2bench` — simulated customer user, domain environments, datasets, remote eval, and training.
+- Keep connector credentials in the connector's terminal only. Do not save them
+  with `ac2 config set` or in `.env`; SDK commands authenticate through
+  `ac2 login`. If they were saved, run `ac2 config unset service_client_id` and
+  `ac2 config unset service_client_secret`, then `ac2 login`.
+- One connector serves a project at a time.
+- Model provider keys for an eval go in `ac2 secrets put --key <NAME> --value <value>`.
+- Verify a command with `--help` before giving it to the user. Do not run
+  commands that create credentials, store secrets, or start jobs unless asked.
