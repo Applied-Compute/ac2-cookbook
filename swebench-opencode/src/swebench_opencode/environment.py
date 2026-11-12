@@ -66,7 +66,6 @@ class SwebenchOpenCodeEnvironment(Environment):
         )
         self._harness_sandbox = await self._create_sandbox(image)
 
-        # The image commits its setup edits on top of base_commit, so diff from its HEAD.
         head = await run_command(
             self.harness_sandbox, "git rev-parse HEAD", timeout_seconds=60
         )
