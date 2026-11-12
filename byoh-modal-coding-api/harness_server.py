@@ -19,6 +19,7 @@ from ac2.harness.types import (
 )
 from ac2.runtime import Message
 from fastapi import FastAPI, Header, HTTPException
+from harbor.agents.installed.acp import AcpAgent
 from harbor.job import Job
 from harbor.models.environment_type import EnvironmentType
 from harbor.models.job.config import DatasetConfig, JobConfig
@@ -28,7 +29,15 @@ from pydantic import BaseModel, ValidationError
 
 from byoh_modal_coding_api.models import CodingRolloutOutput, HarborDataset
 
-ACP_AGENT = "acp:opencode@1.18.10"
+ACP_AGENT = "opencode@1.18.10"
+
+
+class PinnedAcpAgent(AcpAgent):
+    def _build_dependencies_command(self, kind: str) -> str:
+        command = super()._build_dependencies_command(kind)
+        unpinned = "pip install agent-client-protocol\n"
+        assert unpinned in command
+        return command.replace(unpinned, "pip install 'agent-client-protocol<1'\n")
 
 
 class SubmitResponse(BaseModel):
@@ -192,8 +201,12 @@ async def _run_harbor(
             quiet=True,
             agents=[
                 AgentConfig(
-                    name=ACP_AGENT,
-                    kwargs={"auth_policy": "auto", "permission_mode": "allow"},
+                    import_path=f"{__name__}:PinnedAcpAgent",
+                    kwargs={
+                        "registry_spec": ACP_AGENT,
+                        "auth_policy": "auto",
+                        "permission_mode": "allow",
+                    },
                     env={
                         "AC2_ROLLOUT_API_KEY": request.ac_api_key,
                         "OPENCODE_CONFIG_CONTENT": json.dumps(opencode_config),
