@@ -567,8 +567,10 @@ name = "dapo-math-check"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
@@ -578,8 +580,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pyarrow", specifier = ">=14.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
 ]
 
 [package.metadata.requires-dev]
