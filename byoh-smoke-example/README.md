@@ -16,7 +16,7 @@ uv run python upload_dataset.py
 ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 ```
 
-The eval's model, `gpt-5-mini`, is called from the eval job, so it needs the
+The eval's model, `gpt-5.6-luna`, is called from the eval job, so it needs the
 key wherever the harness runs.
 
 ## Run
