@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "data-pipelines"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["ac2>=0.3.58", "httpx>=0.28", "openai>=2.36", "pydantic>=2.13", "zstandard>=0.23"]
+dependencies = ["ac2>=0.3.69", "httpx>=0.28", "openai>=2.36", "pydantic>=2.13", "zstandard>=0.23"]
 
 [dependency-groups]
 dev = ["pytest>=8"]
