@@ -1,96 +1,102 @@
-# OpenCode on SWE-bench with AC2-managed lifecycle
+# OpenCode on SWE-bench through a self-hosted harness
 
-This project runs an unmodified OpenCode harness against AC2. OpenCode owns the
-agent loop and tools inside a Modal sandbox. AC2 connects OpenCode to the model
-selected for the job, records the trace, and grades the resulting repository
-with the official SWE-bench harness. The project-defined orchestrator runs
-inside the AC2 job and owns the rollout lifecycle.
+This example shows the
+[self-hosted BYOH deployment model](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted)
+for a sandbox-heavy coding harness that also grades its own rollouts.
 
-The example works for both evals against an API model and reinforcement
+The Harness API runs an unmodified OpenCode CLI on
+[SWE-bench Verified](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified)
+tasks in Modal sandboxes and scores each result with the official SWE-bench
+tests. OpenCode, the sandboxes, and the grading all run in your infrastructure.
+AC2 connects OpenCode to the model selected for the job and records the trace
+and the score.
+
+The example works for evals against an API model and for reinforcement
 learning with Qwen3-4B.
 
 ## What this example teaches
 
-This is the
-[AC2-managed lifecycle](https://docs.appliedcompute.com/platform/custom-harnesses/ac2-managed)
-for a **stateful, sandbox-heavy CLI harness**:
+This is an **execution and grading in your infrastructure** pattern:
 
-- Your orchestrator runs inside the AC2 job.
-- It starts OpenCode as a CLI in one Modal sandbox and tracks the process in
-  memory.
-- After the rollout, it copies the code patch into a clean grading sandbox.
-- The official SWE-bench grader runs in AC2 against that reconstructed state.
+- The Harness API starts OpenCode in one Modal sandbox per rollout and reports
+  the CLI process state.
+- After the rollout, it diffs the repository against the task image's commit
+  and applies that patch in a clean grading sandbox.
+- The official SWE-bench tests run there, and the API returns the score to AC2.
+- The AC2 project contains no orchestrator, environment, or grader.
 
-There is no Harness API server or Harness Connector. This is the right pattern
-when AC2 can run the Python adapter and the underlying harness is an executable
-or library.
+The example keeps rollouts and gradings in memory for readability. In
+production, store them in a database so the API can restart or run multiple
+replicas.
 
 ## What you implement
 
-[`src/swebench_opencode/orchestrator.py`](src/swebench_opencode/orchestrator.py)
-is the code you implement. Its
-`SwebenchOpenCodeOrchestrator` maps the three lifecycle operations to OpenCode:
+[`harness_server.py`](harness_server.py) is the server you implement and
+operate. Its FastAPI routes are the complete AC2 integration contract:
 
-- `submit` starts the CLI with the model endpoint and API key supplied
-  by AC2. The orchestrator generates and returns the rollout ID; AC2 does not
-  assign it.
-- `get_status` translates the CLI process state into a `BlackBoxRolloutResult`
-  with status `RUNNING`, `COMPLETED`, or `ERRORED` (plus an error message).
-- `collect_outputs` captures the model's patch and prepares the environment for
-  grading.
+- `/submit` creates a rollout ID, starts OpenCode in a sandbox with the
+  rollout-scoped `ac_api_url` and `ac_api_key`, and returns the ID. It uses
+  `Idempotency-Key` to return the same ID if AC2 retries the request.
+- `/get_status` translates the CLI process state into `running`, `completed`,
+  or `failed` with an error message.
+- `/collect_outputs` returns the sandbox ID, the exit code, and the tail of
+  OpenCode's output.
+- `/submit_grading` starts grading the rollout. A patch that fails
+  `git apply --check` scores 0 without running the tests.
+- `/get_grading_status` reports `running`, `completed`, or `failed`.
+- `/collect_score` returns the score, the reasoning, and the test results.
 
-`environment.py` owns the Modal sandboxes because they are part of this
-harness's execution and grading state.
+The AC2 Harness Connector does not contain your harness logic. It is an
+unmodified bridge that opens an outbound WebSocket to AC2 and forwards
+requests to these private HTTP endpoints.
 
 ## How a rollout moves through the example
 
-1. AC2 creates `SwebenchOpenCodeEnvironment` for a dataset task.
-2. The environment starts a Modal sandbox from the task's SWE-bench image.
-3. AC2 calls `submit`; OpenCode works in the repository using the model
-   endpoint supplied by AC2.
-4. AC2 polls `get_status` until the CLI exits.
-5. `collect_outputs` extracts the patch and applies it to a clean grading sandbox.
-6. `SwebenchVerifiedGrader` runs the official tests and returns a binary score.
+1. `eval.py` or `train.py` starts an AC2 job for the dataset.
+2. The AC2 job sends `/submit` through the Harness Gateway and Connector.
+3. `harness_server.py` starts a Modal sandbox from the task's SWE-bench image,
+   writes the issue to `/task/instruction.md`, and runs OpenCode against the
+   model endpoint supplied by AC2.
+4. The Connector polls `/get_status` until the CLI exits, then AC2 requests
+   `/collect_outputs`.
+5. AC2 sends `/submit_grading`. The server extracts the patch, verifies a
+   clean grading sandbox, applies the patch, and runs the official tests.
+6. The Connector polls `/get_grading_status`, then AC2 requests
+   `/collect_score` and records the score on the rollout.
+
+The server terminates both sandboxes when grading ends. A rollout that is
+never graded keeps its sandbox until the three-hour sandbox timeout.
 
 ## Code map
 
 | File | Responsibility |
 | --- | --- |
-| `src/swebench_opencode/orchestrator.py` | Your adapter around the OpenCode CLI |
-| `src/swebench_opencode/environment.py` | Harness and grading sandboxes plus the patch handoff |
-| `src/swebench_opencode/grader.py` | Official SWE-bench grading inside AC2 |
-| `upload_dataset.py` | Public task images and AC2 Blob preparation |
-| `src/swebench_opencode/eval.py` | Eval configuration |
-| `src/swebench_opencode/train.py` | Bounded GRPO training configuration |
+| `harness_server.py` | Your Harness API: OpenCode sandboxes, patch handoff, and SWE-bench grading |
+| `upload_dataset.py` | Creates the AC2 dataset from public SWE-bench Verified tasks |
+| `src/swebench_opencode/eval.py` | Eval configuration that selects the self-hosted lifecycle |
+| `src/swebench_opencode/train.py` | One-step connector-backed GRPO training configuration |
 
 ## Adapt it to your harness
 
-Replace the OpenCode command and task-specific sandbox setup with your CLI or
-library. Preserve the three `CustomHarnessOrchestrator` methods, pass the model
-endpoint and API key supplied by AC2 to your model client unchanged, and store
-everything the grader needs on the orchestrator environment during
-`collect_outputs`.
+Replace the OpenCode command and the sandbox setup in `run_rollout` with your
+CLI or scheduler, and replace `grade` with your scoring. Pass `ac_api_url` and
+`ac_api_key` to your model client unchanged. The six routes stay the same.
 
-## Setup
+## Set up the project
 
 Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
 
-From this directory:
+From this directory, register the project and install both AC2-side and local
+Harness API dependencies:
 
 ```bash
 ac2 project init
-uv sync
+uv sync --extra harness
 uv run modal setup
 ```
 
-Add your Modal credentials to the project:
-
-```bash
-ac2 secrets put --key MODAL_TOKEN_ID --value <token-id>
-ac2 secrets put --key MODAL_TOKEN_SECRET --value <token-secret>
-```
-
-For evals against an OpenAI model, store the provider key in the project:
+Modal credentials remain on your machine. For evals against an OpenAI model,
+store the provider key in the project:
 
 ```bash
 ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
@@ -98,9 +104,9 @@ ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 
 ## Upload tasks
 
-The uploader reads the public SWE-bench Verified dataset, uses the public
-`swebench/sweb.eval...` task images, and stores each instruction directory as
-an AC2 Blob:
+The uploader reads the public SWE-bench Verified dataset and stores each task
+with its datapoint. The server derives the public `swebench/sweb.eval...`
+image and the tests from that datapoint.
 
 ```bash
 uv run python upload_dataset.py --num-tasks 2
@@ -108,22 +114,78 @@ uv run python upload_dataset.py --num-tasks 2
 
 Pass `--instance-id <id>` one or more times to select specific tasks.
 
-Each remote launch uploads this folder as a new project version, so AC2 runs
-the code you have locally. The eval and training launchers use the model access
-provisioned by AC2 automatically.
+## Start your services
 
-## Run an eval
+You need two long-running processes.
+
+### 1. Start the Harness API
+
+In the first terminal:
+
+```bash
+uv run --extra harness python harness_server.py
+```
+
+The API listens on `http://127.0.0.1:8000` by default.
+
+### 2. Start the Harness Connector
+
+The connector uses machine credentials that are separate from your credentials
+created by `ac2 login`. If the organization does not already have
+connector credentials, an organization admin creates them once:
+
+```bash
+ac2 harness credentials create
+```
+
+The command prints `AC2_SERVICE_CLIENT_ID` and `AC2_SERVICE_CLIENT_SECRET`. In a
+dedicated second terminal, export those values and start the connector:
+
+```bash
+export AC2_SERVICE_CLIENT_ID=svc_...
+export AC2_SERVICE_CLIENT_SECRET=...
+
+uv run ac2 harness connect \
+  --project-id <project-id> \
+  --upstream http://127.0.0.1:8000
+```
+
+Keep both terminals running. The Harness API remains private; only the
+connector makes an outbound connection to AC2. Run the connector with
+`uv run` so it uses this project's SDK, which forwards grading; AC2 refuses to
+launch a run without a grader until that connector is connected.
+
+> Do not save these values with `ac2 config set` or put them in the project's
+> `.env`. They are only for the Harness Connector process. Normal SDK commands
+> and eval scripts should authenticate through `ac2 login`.
+
+## Run the eval
+
+In a third terminal without the connector environment variables:
 
 ```bash
 uv run python -m swebench_opencode.eval
 ```
 
-## Run a bounded training smoke test
+## Run training
+
+With the Harness API and Harness Connector still running, start a training
+smoke test:
 
 ```bash
 uv run python -m swebench_opencode.train
 ```
 
 The default is deliberately small: one Qwen3-4B training step, one problem per
-batch, two samples, and a global sampling concurrency of two. Increase those
-values only after the smoke test succeeds.
+batch, two samples, and a sampling concurrency of two. Pass `--steps`,
+`--samples-per-problem`, or `--problem-batch-size` to run more.
+
+## Evaluate the checkpoint
+
+[Promote and deploy](https://docs.appliedcompute.com/platform/serving#deploy-a-training-checkpoint)
+the checkpoint the training run saved, then point the same eval at the
+deployment:
+
+```bash
+uv run python -m swebench_opencode.eval --deployment swebench-opencode/<deployment-name>
+```

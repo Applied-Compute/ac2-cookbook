@@ -1,17 +1,11 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import cast
-
-from datasets import load_dataset
-from pydantic import BaseModel, ConfigDict, JsonValue
-from swebench.harness.constants import SWEbenchInstance
-from swebench.harness.test_spec.test_spec import make_test_spec
 
 from ac2.runtime import Message, Task
 from ac2.sdk import Client, DatasetNotFoundError
+from datasets import load_dataset
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 DEFAULT_DATASET = "swebench-opencode-smoke"
 SWE_BENCH_DATASET = "princeton-nlp/SWE-bench_Verified"
@@ -37,23 +31,7 @@ class SwebenchDatapoint(BaseModel):
         return self.model_dump(mode="json")
 
 
-def build_task(client: Client, datapoint: SwebenchDatapoint) -> Task:
-    payload = datapoint.payload()
-    test_spec = make_test_spec(
-        cast(SWEbenchInstance, payload),
-        namespace="swebench",
-    )
-    instruction = (
-        "Solve this SWE-bench issue in /testbed. Make the smallest correct change, "
-        "do not modify tests, and run the relevant tests.\n\n"
-        f"{datapoint.problem_statement}\n"
-    )
-    with TemporaryDirectory() as directory:
-        task_directory = Path(directory) / "task"
-        task_directory.mkdir()
-        (task_directory / "instruction.md").write_text(instruction)
-        task_blob = client.blobs.upload(task_directory)
-
+def build_task(datapoint: SwebenchDatapoint) -> Task:
     return Task(
         id=datapoint.instance_id,
         input=[
@@ -62,12 +40,7 @@ def build_task(client: Client, datapoint: SwebenchDatapoint) -> Task:
                 content="Read /task/instruction.md and solve the task in /testbed.",
             )
         ],
-        env_params={
-            "image": test_spec.instance_image_key,
-            "task_blob": task_blob.id,
-            "datapoint": payload,
-        },
-        grader_params={"datapoint": payload},
+        env_params={"datapoint": datapoint.payload()},
     )
 
 
@@ -93,14 +66,13 @@ def main() -> None:
         parser.error("No SWE-bench Verified tasks matched")
 
     client = Client(project=args.project)
-    print(f"Preparing {len(datapoints)} task(s), this may take a minute.")
-    tasks = [build_task(client, datapoint) for datapoint in datapoints]
+    tasks = [build_task(datapoint) for datapoint in datapoints]
     try:
         client.datasets.get(args.dataset)
     except DatasetNotFoundError:
         client.datasets.create(
             args.dataset,
-            description="SWE-bench Verified tasks for the OpenCode custom harness.",
+            description="SWE-bench Verified tasks for the self-hosted OpenCode harness.",
         )
     print(f"Uploading {len(tasks)} task(s), this may take a minute.")
     client.datasets.add_tasks(args.dataset, tasks=tasks)

@@ -4,10 +4,7 @@ import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
-
-from .grader import SwebenchVerifiedGrader
-from .orchestrator import SwebenchOpenCodeOrchestrator
+from ac2.sdk import Client, CustomHarnessConfig, EvalConfig, InferenceModelConfiguration
 
 
 async def main() -> None:
@@ -15,25 +12,28 @@ async def main() -> None:
     parser.add_argument("--project", default="swebench-opencode")
     parser.add_argument("--dataset", default="swebench-opencode-smoke")
     parser.add_argument("--model", default="gpt-5.6-luna")
+    parser.add_argument("--deployment")
     parser.add_argument("--max-parallel", type=int, default=1)
     args = parser.parse_args()
 
+    if args.deployment:
+        model = InferenceModelConfiguration(deployment=args.deployment)
+    else:
+        model = ModelConfiguration(
+            model=args.model,
+            kwargs={"max_output_tokens": 32_768},
+        )
+
     client = Client(project=args.project)
-    await client.eval.run(
+    run = await client.eval.run(
         EvalConfig(
-            orchestrator=SwebenchOpenCodeOrchestrator(),
-            grader=SwebenchVerifiedGrader(),
             dataset=args.dataset,
             max_parallel=args.max_parallel,
             name="swebench-opencode",
-            custom_harness=CustomHarnessConfig(
-                model=ModelConfiguration(
-                    model=args.model,
-                    kwargs={"max_output_tokens": 32_768},
-                ),
-            ),
+            custom_harness=CustomHarnessConfig(model=model),
         )
     )
+    print(run.eval_id)
 
 
 if __name__ == "__main__":
