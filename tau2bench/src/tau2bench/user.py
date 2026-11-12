@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 STOP_SIGNALS = ("###STOP###", "###TRANSFER###", "###OUT-OF-SCOPE###")
 
-# Hard wall-clock cap on a single user-sim LLM call.
+# Hard wall-clock cap on a single user-sim LLM call. Sits above the OpenAI
 USER_SIMULATOR_TIMEOUT_SECONDS = float(os.environ.get("USER_SIMULATOR_TIMEOUT_SECONDS", "180"))
 
 USER_SIMULATOR_ERROR = "user_simulator_error"
