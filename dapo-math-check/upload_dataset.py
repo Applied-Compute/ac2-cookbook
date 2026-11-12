@@ -13,6 +13,8 @@ DATASETS = {
     "dapo-math-check-train2048": "dapo-mid-train2048.parquet",
     "dapo-math-check-eval256": "dapo-mid-eval256.parquet",
 }
+OPSD_DATASET = "dapo-math-check-opsd-train"
+OPSD_TRANSCRIPTS = "opsd-transcripts.jsonl"
 
 
 def row_to_task(row: pd.Series) -> Task:
@@ -27,9 +29,12 @@ def row_to_task(row: pd.Series) -> Task:
     )
 
 
-def upload_one(client: Client, *, dataset: str, filename: str) -> None:
-    df = pd.read_parquet(DATA_DIR / filename)
-    tasks = [row_to_task(row) for _, row in df.iterrows()]
+def transcript_tasks() -> list[Task]:
+    lines = (DATA_DIR / OPSD_TRANSCRIPTS).read_text().splitlines()
+    return [Task.model_validate_json(line) for line in lines]
+
+
+def upload_one(client: Client, *, dataset: str, tasks: list[Task]) -> None:
     try:
         client.datasets.get(dataset)
     except DatasetNotFoundError:
@@ -42,7 +47,9 @@ def upload_one(client: Client, *, dataset: str, filename: str) -> None:
 def main() -> None:
     client = Client(project=PROJECT)
     for dataset, filename in DATASETS.items():
-        upload_one(client, dataset=dataset, filename=filename)
+        df = pd.read_parquet(DATA_DIR / filename)
+        upload_one(client, dataset=dataset, tasks=[row_to_task(row) for _, row in df.iterrows()])
+    upload_one(client, dataset=OPSD_DATASET, tasks=transcript_tasks())
 
 
 if __name__ == "__main__":

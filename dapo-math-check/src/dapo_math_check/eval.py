@@ -13,7 +13,7 @@ from .user import DapoMathCheckUser
 DATASET = "dapo-math-check-eval256"
 
 
-def eval_config(model: str = "gpt-5-mini") -> EvalConfig:
+def eval_config(model: str = "gpt-5.6-luna") -> EvalConfig:
     return EvalConfig(
         agent=DapoMathAgent(model=model),
         env=DapoMathCheckEnvironment(),
@@ -28,12 +28,12 @@ def eval_config(model: str = "gpt-5-mini") -> EvalConfig:
 CONFIG = eval_config()
 
 
-async def main(*, model: str = "gpt-5-mini") -> None:
+async def main(*, model: str = "gpt-5.6-luna") -> None:
     await Client(project="dapo-math-check").eval.run(eval_config(model))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="gpt-5-mini")
+    parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
     asyncio.run(main(model=args.model))
