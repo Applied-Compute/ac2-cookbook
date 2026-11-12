@@ -1,59 +1,80 @@
-# Train a VLM on Geometry3K
+# Train a VLM on Geometry3K with a self-hosted harness
 
-Train a vision-language model through AC2 Dispatch using the model catalog.
-Each task contains a geometry question and diagram. The agent answers in
-`\boxed{...}`, and a math grader scores the answer.
+Train a vision-language model on image questions through a
+[self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted).
+Each task is a geometry question with a diagram. The Harness API in
+[`harness_server.py`](harness_server.py) sends the question and image to the
+model endpoint AC2 supplies with `/submit`, then grades the `\boxed{...}`
+answer itself with `math-verify` and returns the score through
+`/submit_grading`, `/get_grading_status` and `/collect_score`. No agent,
+environment or grader code runs in the AC2 job.
 
-## 1. Set up
+## Set up
 
-Install [AC2](https://docs.appliedcompute.com/), enter `geo3k-vlm/`, and register
-this project in your organization:
-
-```bash
-export AC2_ORG_ID='your-org-id'
-uv sync
-uv run ac2 project init
-export AC2_PROJECT='geo3k-vlm'
-```
-
-## 2. Upload Geometry3K
+Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
 
 ```bash
+ac2 project init
+uv sync --extra harness
 uv run python upload_dataset.py
+ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 ```
 
-The uploader uses a pinned revision of
-[hiyouga/geometry3k](https://huggingface.co/datasets/hiyouga/geometry3k) to create
-`geo3k-train` (2,101 tasks) and `geo3k-validation` (300 tasks).
-Questions and images become structured message content; expected answers go
-in `grader_params`. The test split is left unused.
+The uploader reads a pinned revision of
+[hiyouga/geometry3k](https://huggingface.co/datasets/hiyouga/geometry3k)
+(MIT license, converted from [InterGPS](https://github.com/lupantech/InterGPS))
+and creates `geo3k-train` (2,101 tasks) and `geo3k-validation` (300 tasks).
+Questions and PNG diagrams become message content parts; expected answers go
+in `grader_params`, which AC2 sends to the harness only for grading. The test
+split is left unused.
 
-## 3. Train through Dispatch
+The eval's model, `gpt-5.6-luna`, is called from the eval job, so it needs the
+OpenAI key wherever the harness runs. Training needs no OpenAI key.
 
-The config in `src/geo3k_vlm/train.py` selects the
-`Qwen/Qwen3.5-9B-VL` catalog model and `backend="dispatch"`. The `-VL` suffix
-enables image training. AC2 supplies the training model to the agent and
-resolves GPU topology from the catalog.
+## Run
 
-Submit to your Dispatch cluster. The submission uploads the project folder:
+Start the Harness API on `http://127.0.0.1:8000`:
 
 ```bash
-uv run python -m geo3k_vlm.train --cluster YOUR_CLUSTER_ID
+uv run --extra harness uvicorn harness_server:app
 ```
 
-The example runs 20 training steps with one training replica and one inference
-replica. Replicas can span multiple GPUs. It evaluates on the validation set
-before training and every 10 steps.
-
-## 4. View results
-
-Use the printed training ID to inspect progress, image traces, and scores in
-the AC2 platform, or follow logs with:
+Start the connector in a second terminal. An organization admin creates its
+credentials once with `ac2 harness credentials create`.
 
 ```bash
-ac2 train get TRAIN_ID
-ac2 train logs -f TRAIN_ID
+export AC2_SERVICE_CLIENT_ID=svc_...
+export AC2_SERVICE_CLIENT_SECRET=...
+
+ac2 harness connect \
+  --project-id <project-id> \
+  --upstream http://127.0.0.1:8000 \
+  --transport https
 ```
+
+Run the baseline eval in a third terminal, without the connector variables:
+
+```bash
+uv run python -m geo3k_vlm.eval
+```
+
+It runs the validation set through your harness with `gpt-5.6-luna`.
+
+## Train
+
+With the Harness API and connector still running:
+
+```bash
+uv run python -m geo3k_vlm.train
+```
+
+It trains `Qwen/Qwen3.5-9B-VL` for 20 steps of 8 tasks with 4 rollouts each.
+The `-VL` suffix enables image training. The run evaluates the validation set
+through your harness before training and again on the final checkpoint. Pass
+`--steps` for a shorter or longer run.
+
+`max_response_len=8192` caps each answer. The model reasons at length, so some
+rollouts still reach the cap; the harness reports those as `truncated`.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
 for more on image inputs.

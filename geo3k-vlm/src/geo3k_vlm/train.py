@@ -1,35 +1,40 @@
+from __future__ import annotations
+
 import argparse
-from ac2.sdk import TrainingConfig
-from .settings import client
-from .tasks import TRAIN_DATASET, EVAL_DATASET
+
+from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 
-def config(cluster_id):
+def config(train_dataset: str, eval_dataset: str, steps: int) -> TrainingConfig:
     return TrainingConfig(
         model="Qwen/Qwen3.5-9B-VL",
         n_training_replicas=1,
         n_inference_replicas=1,
-        num_train_steps=20,
+        num_train_steps=steps,
         samples_per_problem=4,
         problem_batch_size=8,
-        ac2_agent="Geo3KAgent",
-        ac2_env="Geo3KEnvironment",
-        ac2_grader="Geo3KGrader",
-        training_agent_names=["Geo3KAgent"],
-        ac2_train_dataset=TRAIN_DATASET,
-        ac2_eval_dataset=EVAL_DATASET,
-        max_response_len=4096,
-        eval_interval=10,
+        ac2_train_dataset=train_dataset,
+        ac2_eval_dataset=eval_dataset,
+        custom_harness=TrainingCustomHarnessConfig(),
+        max_response_len=8192,
+        eval_interval=steps,
         eval_samples_per_problem=1,
-        backend="dispatch",
-        cluster_id=cluster_id,
         name="geo3k-vlm",
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cluster", required=True)
+    parser.add_argument("--project", default="geo3k-vlm")
+    parser.add_argument("--train-dataset", default="geo3k-train")
+    parser.add_argument("--eval-dataset", default="geo3k-validation")
+    parser.add_argument("--steps", type=int, default=20)
     args = parser.parse_args()
-    run = client().train.run(config(args.cluster))
+
+    client = Client(project=args.project)
+    run = client.train.run(config(args.train_dataset, args.eval_dataset, args.steps))
     print(run.train_id)
+
+
+if __name__ == "__main__":
+    main()
