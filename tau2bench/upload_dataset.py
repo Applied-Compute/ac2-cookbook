@@ -17,8 +17,6 @@ from ac2.sdk import Client, DatasetNotFoundError
 
 from tau2bench.dataloader import DOMAINS, SPLITS, load_tau2_tasks
 
-PROJECT = "tau2bench"
-
 
 def _upload_one(client: Client, *, domain: str, split: str, dataset: str, num_tasks: int | None) -> None:
     try:
@@ -36,6 +34,7 @@ def _upload_one(client: Client, *, domain: str, split: str, dataset: str, num_ta
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--project", default="tau2bench")
     parser.add_argument("--domain", choices=DOMAINS, default="airline")
     parser.add_argument(
         "--split",
@@ -56,7 +55,7 @@ def main() -> None:
 
     splits = (args.split,) if args.split is not None else SPLITS
 
-    client = Client(project=PROJECT)
+    client = Client(project=args.project)
     for split in splits:
         dataset = args.dataset if args.dataset is not None else f"tau2bench-{args.domain}-{split}"
         _upload_one(client, domain=args.domain, split=split, dataset=dataset, num_tasks=args.num_tasks)

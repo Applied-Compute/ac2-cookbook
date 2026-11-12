@@ -15,9 +15,12 @@ introspect the splits without loading tasks.
 
 Each task is mapped to an ac2 :class:`~ac2.runtime.Task`:
 
-- ``user_scenario``        → markdown ``user_instructions`` for ``Tau2BenchUser``
+- ``user_scenario``        → markdown ``user_instructions`` in ``env_params`` for ``Tau2BenchUser``
 - ``initial_state``        → ``env_params`` (env applies it on setup) + ``grader_params``
 - ``evaluation_criteria``  → flattened into ``grader_params``
+
+AC2 sends ``env_params`` to the harness with ``/submit`` and ``grader_params``
+with ``/submit_grading``.
 
 If a task specifies ``reward_basis``, it is preserved; otherwise the grader
 uses its default (``[DB, COMMUNICATE]``).
@@ -143,7 +146,6 @@ def load_tau2_tasks(
         initial_state = t.get("initial_state")
         grader_params: dict[str, Any] = {
             "domain": domain,
-            "user_instructions": _format_user_instructions(t.get("user_scenario") or {}),
             "expected_actions": ec.get("actions") or [],
             "communicate_info": ec.get("communicate_info") or [],
             "env_assertions": ec.get("env_assertions") or [],
@@ -152,7 +154,10 @@ def load_tau2_tasks(
         }
         if ec.get("reward_basis"):
             grader_params["reward_basis"] = ec["reward_basis"]
-        env_params: dict[str, Any] = {}
+        env_params: dict[str, Any] = {
+            "domain": domain,
+            "user_instructions": _format_user_instructions(t.get("user_scenario") or {}),
+        }
         if initial_state:
             env_params["initial_state"] = initial_state
 
