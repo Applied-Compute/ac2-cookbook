@@ -25,7 +25,6 @@ Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follo
 
 | Project                                     | Shows                                                                                  | Use It For                       |
 | ------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------- |
-| [rock-paper-scissors](rock-paper-scissors/) | Local sessions, tool use, grading, deployment                                          | A small end-to-end AC2 agent     |
 | [dapo-math-check](dapo-math-check/)         | Datasets, custom user policy, stateful tools, eval, training                           | A focused train/eval starter     |
 | [tau2bench](tau2bench/)                     | Simulated customer user, domain environments, multi-part grader, remote eval, training | A larger benchmark-style starter |
 

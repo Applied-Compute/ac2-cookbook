@@ -118,6 +118,5 @@ For a migration, start with [migrations.md](references/migrations.md), then read
 
 For examples in this cookbook, use the existing runnable projects:
 
-- `rock-paper-scissors` — local/remote session and deployment with tools.
 - `dapo-math-check` — custom user policy, stateful bounded tool, datasets, and training.
 - `tau2bench` — simulated customer user, domain environments, datasets, remote eval, and training.

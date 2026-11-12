@@ -17,9 +17,8 @@ READMEs short and runnable; put agent workflow guidance here.
 
 ## Project Order
 
-1. `rock-paper-scissors/` for local sessions, tools, grading, and deployment.
-2. `dapo-math-check/` for datasets, custom user policy, eval, and training.
-3. `tau2bench/` for simulated users, domain environments, remote eval, and training.
+1. `dapo-math-check/` for datasets, custom user policy, eval, and training.
+2. `tau2bench/` for simulated users, domain environments, remote eval, and training.
 
 ## Editing Guidelines
 
@@ -49,9 +48,8 @@ READMEs short and runnable; put agent workflow guidance here.
 
 ## Project Order
 
-1. `rock-paper-scissors/` for local sessions, tools, grading, and deployment.
-2. `dapo-math-check/` for datasets, custom user policy, eval, and training.
-3. `tau2bench/` for simulated users, domain environments, remote eval, and training.
+1. `dapo-math-check/` for datasets, custom user policy, eval, and training.
+2. `tau2bench/` for simulated users, domain environments, remote eval, and training.
 
 ## Editing Guidelines
 
