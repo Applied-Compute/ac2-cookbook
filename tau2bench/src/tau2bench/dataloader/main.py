@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.request import urlopen
 
-from ac2.runtime import TASK_NAME_MAX_LENGTH, Message, Task
+from ac2.runtime import Message, Task
 
 DOMAINS = ("airline", "retail", "telecom")
 SPLITS = ("train", "test", "base")
@@ -159,7 +159,6 @@ def load_tau2_tasks(
         tasks.append(
             Task(
                 id=f"{domain}-{t['id']}",
-                name=f"{domain}-{t['id']}"[:TASK_NAME_MAX_LENGTH],
                 input=[Message(role="user", content="(customer simulator drives the conversation)")],
                 env_params=env_params,
                 grader_params=grader_params,
