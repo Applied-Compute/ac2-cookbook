@@ -20,8 +20,8 @@ This is an **execution and grading in your infrastructure** pattern:
 
 - The Harness API starts OpenCode in one Modal sandbox per rollout and reports
   the CLI process state.
-- After the rollout, it diffs the repository against the task image's commit
-  and applies that patch in a clean grading sandbox.
+- When OpenCode exits, it diffs the repository against the task image's commit
+  and terminates the sandbox. Grading applies that patch in a clean sandbox.
 - The official SWE-bench tests run there, and the API returns the score to AC2.
 - The AC2 project contains no orchestrator, environment, or grader.
 
@@ -38,12 +38,14 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
   rollout-scoped `ac_api_url` and `ac_api_key`, and returns the ID. It uses
   `Idempotency-Key` to return the same ID if AC2 retries the request.
 - `/get_status` translates the CLI process state into `running`, `completed`,
-  or `failed` with an error message.
-- `/collect_outputs` returns the sandbox ID, the exit code, and the tail of
-  OpenCode's output.
+  or `failed` with an error message. A rollout that left no patch because
+  OpenCode reported an error or exited non-zero is `failed`, not a score of 0.
+- `/collect_outputs` returns the sandbox ID, the patch size, the exit code, and
+  the tail of OpenCode's output, or `null` for a rollout that raised.
 - `/submit_grading` starts grading the rollout. A patch that fails
   `git apply --check` scores 0 without running the tests.
-- `/get_grading_status` reports `running`, `completed`, or `failed`.
+- `/get_grading_status` reports `running`, `completed`, or `failed`. Grading
+  fails when the rollout raised or the test output cannot be parsed.
 - `/collect_score` returns the score, the reasoning, and the test results.
 
 The AC2 Harness Connector does not contain your harness logic. It is an
@@ -57,15 +59,17 @@ requests to these private HTTP endpoints.
 3. `harness_server.py` starts a Modal sandbox from the task's SWE-bench image,
    writes the issue to `/task/instruction.md`, and runs OpenCode against the
    model endpoint supplied by AC2.
-4. The Connector polls `/get_status` until the CLI exits, then AC2 requests
+4. When the CLI exits, the server saves the patch and terminates the sandbox.
+   The Connector polls `/get_status` until then, and AC2 requests
    `/collect_outputs`.
-5. AC2 sends `/submit_grading`. The server extracts the patch, verifies a
-   clean grading sandbox, applies the patch, and runs the official tests.
+5. AC2 sends `/submit_grading`. The server verifies a clean grading sandbox,
+   applies the patch, and runs the official tests.
 6. The Connector polls `/get_grading_status`, then AC2 requests
    `/collect_score` and records the score on the rollout.
 
-The server terminates both sandboxes when grading ends. A rollout that is
-never graded keeps its sandbox until the three-hour sandbox timeout.
+The server terminates each sandbox as soon as its rollout or grading ends, so
+a rollout that is never graded leaves nothing running. OpenCode is stopped
+after 90 minutes.
 
 ## Code map
 
@@ -179,13 +183,3 @@ uv run python -m swebench_opencode.train
 The default is deliberately small: one Qwen3-4B training step, one problem per
 batch, two samples, and a sampling concurrency of two. Pass `--steps`,
 `--samples-per-problem`, or `--problem-batch-size` to run more.
-
-## Evaluate the checkpoint
-
-[Promote and deploy](https://docs.appliedcompute.com/platform/serving#deploy-a-training-checkpoint)
-the checkpoint the training run saved, then point the same eval at the
-deployment:
-
-```bash
-uv run python -m swebench_opencode.eval --deployment swebench-opencode/<deployment-name>
-```

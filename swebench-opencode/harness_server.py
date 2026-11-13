@@ -32,8 +32,8 @@ from swebench.harness.test_spec.test_spec import TestSpec, make_test_spec
 WORKDIR = "/testbed"
 OPENCODE_VERSION = "1.15.11"
 OPENCODE = "/opt/opencode/opencode"
-SANDBOX_TIMEOUT_SECONDS = 3 * 60 * 60
-ROLLOUT_TIMEOUT_SECONDS = 2 * 60 * 60
+SANDBOX_TIMEOUT_SECONDS = 2 * 60 * 60
+ROLLOUT_TIMEOUT_SECONDS = 90 * 60
 GRADER_TIMEOUT_SECONDS = 240
 OUTPUT_METADATA_LIMIT = 4_000
 
@@ -51,8 +51,9 @@ class CommandResult:
 
 @dataclass(frozen=True)
 class Rollout:
-    sandbox: modal.Sandbox
+    sandbox_id: str
     image_head: str
+    patch: str
     opencode: CommandResult
 
 
@@ -83,6 +84,10 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
     rollout = _rollout(request.rollout_id)
     if not rollout.done():
         return StatusResponse(status=RolloutStatus.running)
+    if rollout.cancelled():
+        return StatusResponse(
+            status=RolloutStatus.failed, error_message="OpenCode was cancelled"
+        )
     if error := rollout.exception():
         return StatusResponse(
             status=RolloutStatus.failed, error_message=str(error)[:2000]
@@ -97,16 +102,18 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
 
 
 @app.post("/collect_outputs")
-async def collect_outputs(request: RolloutRequest) -> dict[str, JsonValue]:
-    try:
-        rollout = await _rollout(request.rollout_id)
-    except Exception as exc:
-        return {"error": f"{type(exc).__name__}: {exc}"}
+async def collect_outputs(request: RolloutRequest) -> dict[str, JsonValue] | None:
+    task = _rollout(request.rollout_id)
+    await asyncio.wait([task])
+    if task.cancelled() or task.exception():
+        return None
+    rollout = task.result()
     return {
-        "harness_sandbox_id": rollout.sandbox.object_id,
+        "harness_sandbox_id": rollout.sandbox_id,
+        "model_patch_bytes": len(rollout.patch.encode()),
         "returncode": rollout.opencode.returncode,
-        "stdout": rollout.opencode.stdout[-OUTPUT_METADATA_LIMIT:],
-        "stderr": rollout.opencode.stderr[-OUTPUT_METADATA_LIMIT:],
+        "stdout": rollout.opencode.stdout,
+        "stderr": rollout.opencode.stderr,
     }
 
 
@@ -124,6 +131,10 @@ async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
     grading = _grading(request.rollout_id)
     if not grading.done():
         return GradingStatusResponse(status=GradingStatus.running)
+    if grading.cancelled():
+        return GradingStatusResponse(
+            status=GradingStatus.failed, error_message="Grading was cancelled"
+        )
     if error := grading.exception():
         return GradingStatusResponse(
             status=GradingStatus.failed, error_message=str(error)[:2000]
@@ -202,10 +213,34 @@ async def run_rollout(
             },
             timeout_seconds=ROLLOUT_TIMEOUT_SECONDS,
         )
-    except BaseException:
+        patch_result = await run_command(
+            sandbox,
+            """
+set -euo pipefail
+git add --intent-to-add .
+git diff --binary "$IMAGE_HEAD"
+""",
+            env={"IMAGE_HEAD": head.stdout.strip()},
+            timeout_seconds=300,
+        )
+        if patch_result.returncode != 0:
+            raise RuntimeError(f"Failed to fetch model patch: {patch_result.stderr}")
+    finally:
         await sandbox.terminate.aio()
-        raise
-    return Rollout(sandbox=sandbox, image_head=head.stdout.strip(), opencode=opencode)
+
+    error = _opencode_error(opencode)
+    if error and not patch_result.stdout:
+        raise RuntimeError(error)
+    return Rollout(
+        sandbox_id=sandbox.object_id,
+        image_head=head.stdout.strip(),
+        patch=patch_result.stdout,
+        opencode=CommandResult(
+            returncode=opencode.returncode,
+            stdout=opencode.stdout[-OUTPUT_METADATA_LIMIT:],
+            stderr=opencode.stderr[-OUTPUT_METADATA_LIMIT:],
+        ),
+    )
 
 
 async def grade(
@@ -213,26 +248,10 @@ async def grade(
 ) -> ScoreResponse:
     rollout = await rollout_task
     test_spec = _test_spec(datapoint)
-    sandboxes = [rollout.sandbox]
+    sandbox = await create_sandbox(
+        modal.Image.from_registry(test_spec.instance_image_key).entrypoint([])
+    )
     try:
-        patch_result = await run_command(
-            rollout.sandbox,
-            """
-set -euo pipefail
-git add --intent-to-add .
-git diff --binary "$IMAGE_HEAD"
-""",
-            env={"IMAGE_HEAD": rollout.image_head},
-            timeout_seconds=300,
-        )
-        if patch_result.returncode != 0:
-            raise RuntimeError(f"Failed to fetch model patch: {patch_result.stderr}")
-
-        sandbox = await create_sandbox(
-            modal.Image.from_registry(test_spec.instance_image_key).entrypoint([])
-        )
-        sandboxes.append(sandbox)
-
         head_result = await run_command(
             sandbox, "git rev-parse HEAD", timeout_seconds=60
         )
@@ -259,10 +278,8 @@ git diff --binary "$IMAGE_HEAD"
                 f"Grading sandbox has pre-existing tracked changes: {status_result.stdout.strip()}"
             )
 
-        if patch_result.stdout:
-            await sandbox.filesystem.write_text.aio(
-                patch_result.stdout, "/tmp/model.patch"
-            )
+        if rollout.patch:
+            await sandbox.filesystem.write_text.aio(rollout.patch, "/tmp/model.patch")
             check_result = await run_command(
                 sandbox,
                 "git apply --check --binary /tmp/model.patch",
@@ -304,7 +321,7 @@ git diff --binary "$IMAGE_HEAD"
             timeout_seconds=GRADER_TIMEOUT_SECONDS,
         )
     finally:
-        await asyncio.gather(*(sandbox.terminate.aio() for sandbox in sandboxes))
+        await sandbox.terminate.aio()
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as test_log:
         test_log.write(result.stdout)
@@ -322,6 +339,10 @@ git diff --binary "$IMAGE_HEAD"
         )
 
     instance_report = report.get(test_spec.instance_id, {})
+    if "tests_status" not in instance_report:
+        raise RuntimeError(
+            f"SWE-bench test output could not be parsed: {result.stdout[-1_000:]}"
+        )
     resolved = bool(instance_report.get("resolved", False))
     tests_status = instance_report.get("tests_status", {})
     fail_to_pass = tests_status.get("FAIL_TO_PASS", {})
@@ -342,7 +363,7 @@ git diff --binary "$IMAGE_HEAD"
         ),
         artifacts={
             "resolved": resolved,
-            "model_patch_bytes": len(patch_result.stdout.encode()),
+            "model_patch_bytes": len(rollout.patch.encode()),
             "fail_to_pass_succeeded": fail_to_pass_succeeded,
             "fail_to_pass_failed": fail_to_pass_failed,
             "pass_to_pass_succeeded": pass_to_pass_succeeded,
@@ -390,6 +411,19 @@ async def run_command(
     if proc.returncode is None:
         raise RuntimeError("Sandbox process ended without an exit code")
     return CommandResult(returncode=proc.returncode, stdout=stdout, stderr=stderr)
+
+
+def _opencode_error(opencode: CommandResult) -> str | None:
+    if opencode.returncode != 0:
+        return f"OpenCode exited with code {opencode.returncode}"
+    lines = opencode.stdout.strip().splitlines()
+    try:
+        event = json.loads(lines[-1]) if lines else None
+    except ValueError:
+        return None
+    if isinstance(event, dict) and event.get("type") == "error":
+        return f"OpenCode reported an error: {json.dumps(event.get('error'))}"
+    return None
 
 
 def _rollout(rollout_id: str) -> asyncio.Task[Rollout]:
