@@ -72,9 +72,7 @@ It trains `Qwen/Qwen3.5-9B-VL` for one step of 8 tasks with 4 rollouts each.
 The `-VL` suffix enables image training. Pass `--steps` for a longer run.
 
 `max_response_len=8192` caps each answer; the harness reports a rollout that
-reaches the cap as `truncated` and scores it 0. The config also sets
-`max_tokens_per_gpu=8192`, which splits each training step into smaller
-micro-batches so it fits in GPU memory.
+reaches the cap as `truncated` and scores it 0.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
 for more on image inputs.
