@@ -13,13 +13,13 @@ harness to AC2: a Harness API server the user runs, the Harness Connector
   larger examples.
 - <https://docs.appliedcompute.com/llms.txt> indexes the AC2 docs.
 
-## Editing guidelines
+## Working in this repository
 
-- Keep each example's README short and runnable: upload the dataset, run a
-  baseline eval, run a short training job.
-- Keep cluster names, IDs, and secrets out of READMEs.
+- Each example is its own project. Run commands from the example's directory
+  and follow its README in order.
 - Check every command against `ac2 <command> --help` and every SDK call against
-  the installed `ac2` package before writing it down.
-- State the project, dataset, model, and secrets each command needs.
-- After editing an example, run its narrowest relevant check and report what
-  was run.
+  the installed `ac2` package before running it.
+- Do not create credentials, store secrets, or start eval or training jobs
+  unless the user asks. Have the user enter secret values themselves.
+- To build a new harness, copy `byoh-smoke-example/harness_server.py`, keep its
+  six routes, and replace `run_rollout` and the scoring in `/submit_grading`.

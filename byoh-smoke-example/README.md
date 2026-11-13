@@ -1,16 +1,23 @@
 # Self-hosted harness smoke example
 
-The smallest [self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted):
-each rollout makes one model call through the URL and key AC2 sends with
-`/submit`, so it gets a trace and a graded answer. Start here, then replace
-`run_rollout` in [`harness_server.py`](harness_server.py) with your agent.
+The smallest [self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted).
+Run it first to check your credentials, your network path to AC2, and the
+Harness Connector, then replace `run_rollout` in
+[`harness_server.py`](harness_server.py) with your agent.
+
+Each rollout makes one model call through the URL and key AC2 sends with
+`/submit`. The harness sends `policy` as the model name; AC2 serves the model
+selected for the job and records the trace.
 
 The harness also grades: a rollout scores 1 when its answer contains the task's
 `expected_answer`, and 0 otherwise. If the model call fails, the harness reports
 the rollout as failed with no output and no score, so an outage is not counted
 as a wrong answer.
 
-## Set up
+You need the AC2 CLI, Harness Connector credentials, and an OpenAI API key for
+the eval's model.
+
+## Set up the project
 
 Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
 
@@ -21,10 +28,11 @@ uv run python upload_dataset.py
 ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 ```
 
-The eval's model, `gpt-5.6-luna`, is called from the eval job, so it needs the
-key wherever the harness runs.
+`upload_dataset.py` creates the `byoh-smoke-eval` dataset with three factual
+questions. The eval job calls the eval's model, `gpt-5.6-luna`, so the OpenAI
+key is stored in AC2 and the harness does not need it.
 
-## Run
+## Start your services
 
 Start the Harness API on `http://127.0.0.1:8000`:
 
@@ -41,31 +49,40 @@ export AC2_SERVICE_CLIENT_SECRET=...
 
 ac2 harness connect \
   --project-id <project-id> \
-  --upstream http://127.0.0.1:8000 \
-  --transport https
+  --upstream http://127.0.0.1:8000
 ```
 
-Run the eval in a third terminal, without the connector variables:
+Add `--transport https` if your network only allows plain HTTPS. Keep both
+running.
+
+## Run the eval
+
+In a third terminal, without the connector variables:
 
 ```bash
 uv run python -m byoh_smoke_example.eval
 ```
 
-## Train
+It runs the three questions through your harness and prints the eval ID. Check
+the result with `ac2 eval get <eval-id>`.
 
-With the Harness API and connector still running, start a one-step run:
+## Run training
+
+With the Harness API and connector still running:
 
 ```bash
 uv run python -m byoh_smoke_example.train
 ```
 
-It runs one training step with two rollouts through your harness. Training calls
-the model being trained, so it needs no OpenAI key. Pass `--steps` for more.
+It runs one training step of `Qwen/Qwen3-4B` with two rollouts through your
+harness. Training calls the model being trained, so it needs no OpenAI key. Pass
+`--steps` for more.
 
 ## Build the image
 
-The image serves the Harness API on port 8000 as a non-root user. Its build
-installs `ac2` from the AC2 package index, so pass your API key as a secret:
+To run the Harness API as a container, build the image. It serves on port 8000
+as a non-root user. The build installs `ac2` from the AC2 package index, so pass
+your AC2 API key as a secret:
 
 ```bash
 AC2_API_KEY=key_... docker build --secret id=ac2_api_key,env=AC2_API_KEY \

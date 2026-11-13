@@ -60,9 +60,9 @@ score through three more endpoints:
 | `/collect_score` | `rollout_id` | `score`, optional `reasoning`, `artifacts` |
 
 Grading `status` is one of `queued`, `running`, `completed`, `failed`,
-`cancelled`. These endpoints need a project whose installed `ac2` defines
-`ScoreResponse` in `ac2.harness.types`. `ac2 upgrade` upgrades the CLI only; to
-upgrade the project, run `uv lock --upgrade-package ac2 && uv sync`.
+`cancelled`. These endpoints need `ac2` 0.3.97 or later in the project
+(`uv lock --upgrade-package ac2 && uv sync`) and a current CLI running the
+connector (`ac2 upgrade`).
 
 - When the model endpoint or infrastructure failed, return `failed` with
   `error_message` from `/get_status`, `null` from `/collect_outputs`, and
@@ -72,11 +72,13 @@ upgrade the project, run `uv lock --upgrade-package ac2 && uv sync`.
 ## Workflow
 
 1. Install and log in: `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
-   Re-authenticate later with `ac2 login`.
+   Re-authenticate later with `ac2 login`. Logging in also gives `uv` access to
+   the AC2 package index.
 2. Register the project from its folder with `ac2 project init`, then install
    it with `uv sync` (add `--extra <name>` when the example's README does). If
-   the sync fails on index auth, set `UV_INDEX_AC2_USERNAME=__token__` and
-   `UV_INDEX_AC2_PASSWORD` to your AC2 API key, then retry.
+   the sync fails on index auth, run `ac2 login` again. If it still fails, set
+   `UV_INDEX_AC2_USERNAME=__token__` and `UV_INDEX_AC2_PASSWORD` to the user's
+   AC2 API key, then retry.
 3. Upload the dataset with the example's `upload_dataset.py`. It uses
    `client.datasets.create` and `client.datasets.add_tasks` with `Task` objects
    (`id`, `input`, `env_params`, `grader_params`).
@@ -95,40 +97,11 @@ upgrade the project, run `uv lock --upgrade-package ac2 && uv sync`.
 6. Run a baseline eval from another terminal, without the connector variables.
 7. Run a short training job. Follow the example's README.
 
-Eval and training configs select the connector by setting `custom_harness` and
-leaving out the agent, environment, and orchestrator:
-
-```python
-from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
-
-run = await Client(project="my-project").eval.run(
-    EvalConfig(
-        dataset="my-dataset",
-        custom_harness=CustomHarnessConfig(model=ModelConfiguration(model="<model>")),
-    )
-)
-print(run.eval_id)
-```
-
-```python
-from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
-
-run = Client(project="my-project").train.run(
-    TrainingConfig(
-        model="<catalog-model>",
-        n_training_replicas=1,
-        n_inference_replicas=1,
-        samples_per_problem=2,
-        problem_batch_size=1,
-        num_train_steps=1,
-        ac2_train_dataset="my-dataset",
-        eval_mode="off",
-        custom_harness=TrainingCustomHarnessConfig(),
-    )
-)
-print(run.train_id)
-```
+Eval and training configs select the connector by setting `custom_harness`
+(`CustomHarnessConfig` in `EvalConfig`, `TrainingCustomHarnessConfig` in
+`TrainingConfig`) and leaving out the agent, environment, orchestrator, and
+grader. Copy `byoh-smoke-example/src/byoh_smoke_example/eval.py` and
+`train.py`.
 
 ## Inspect a run
 
