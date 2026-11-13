@@ -4,22 +4,20 @@ import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
+from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="terminal-bench-harbor")
-    parser.add_argument("--dataset", default="terminal-bench")
+    parser.add_argument("--dataset", default="terminal-bench-smoke")
     parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
 
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            dataset=DatasetSource(dataset=args.dataset, num_tasks=3),
-            max_parallel=3,
-            max_retries=0,
+            dataset=args.dataset,
             name="terminal-bench-harbor",
             custom_harness=CustomHarnessConfig(
                 model=ModelConfiguration(

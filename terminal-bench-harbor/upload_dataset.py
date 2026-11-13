@@ -11,7 +11,7 @@ from harbor.tasks.client import TaskClient
 
 HARBOR_DATASET = "terminal-bench/terminal-bench-2"
 HARBOR_REF = "sha256:c6fc2e2382c1dbae99b2d5ecd2f4f4a60c3c01e0d84642d69b4afd92e99d078b"
-EVAL_TASKS = ("fix-git", "openssl-selfsigned-cert", "regex-log")
+SMOKE_TASKS = ("fix-git", "openssl-selfsigned-cert", "regex-log")
 
 
 async def load_tasks() -> list[Task]:
@@ -38,23 +38,22 @@ def main() -> None:
     parser.add_argument("--dataset", default="terminal-bench")
     args = parser.parse_args()
 
-    tasks = sorted(asyncio.run(load_tasks()), key=lambda task: task.id)
+    tasks = asyncio.run(load_tasks())
+    smoke_tasks = [task for task in tasks if task.id in SMOKE_TASKS]
     client = Client(project=args.project)
-    try:
-        client.datasets.get(args.dataset)
-    except DatasetNotFoundError:
-        client.datasets.create(
-            args.dataset,
-            description="Terminal-Bench 2.0 tasks run through Harbor by a self-hosted Harness API.",
-        )
-    first = [task for task in tasks if task.id in EVAL_TASKS]
-    client.datasets.add_tasks(args.dataset, tasks=first)
-    client.datasets.add_tasks(
-        args.dataset, tasks=[task for task in tasks if task.id not in EVAL_TASKS]
-    )
-    print(
-        f"Uploaded {len(tasks)} {HARBOR_DATASET} tasks to {args.project}/{args.dataset}"
-    )
+    for dataset, dataset_tasks in (
+        (args.dataset, tasks),
+        (f"{args.dataset}-smoke", smoke_tasks),
+    ):
+        try:
+            client.datasets.get(dataset)
+        except DatasetNotFoundError:
+            client.datasets.create(
+                dataset,
+                description="Terminal-Bench 2.0 tasks run through Harbor by a self-hosted Harness API.",
+            )
+        client.datasets.add_tasks(dataset, tasks=dataset_tasks)
+        print(f"Uploaded {len(dataset_tasks)} tasks to {args.project}/{dataset}")
 
 
 if __name__ == "__main__":
