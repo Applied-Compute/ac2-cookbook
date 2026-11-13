@@ -14,15 +14,14 @@ import uvicorn
 from ac2.harness.types import (
     GradingStatus,
     GradingStatusResponse,
-    HarnessTask,
     RolloutRequest,
     RolloutStatus,
     ScoreResponse,
     StatusResponse,
     SubmitGradingRequest,
     SubmitPayload,
+    SubmitResponse,
 )
-from ac2.runtime import Message
 from fastapi import FastAPI, Header, HTTPException
 from harbor.agents.installed.acp import AcpAgent
 from harbor.job import Job
@@ -30,9 +29,8 @@ from harbor.models.environment_type import EnvironmentType
 from harbor.models.job.config import DatasetConfig, JobConfig
 from harbor.models.job.result import JobResult
 from harbor.models.trial.config import AgentConfig, EnvironmentConfig
-from pydantic import BaseModel, ValidationError
-
-from terminal_bench_harbor.models import CodingRolloutOutput, HarborDataset
+from harbor.trial.errors import AgentTimeoutError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 ACP_AGENT = "opencode@1.18.10"
 
@@ -45,17 +43,31 @@ class PinnedAcpAgent(AcpAgent):
         return command.replace(unpinned, "pip install 'agent-client-protocol<1'\n")
 
 
-class SubmitResponse(BaseModel):
-    rollout_id: str
+class HarborDataset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    ref: str
+    task_name: str
+
+
+class RolloutOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str | None = None
+    trial_id: str | None = None
+    trial_uri: str | None = None
+    rewards: dict[str, float | int] | None = None
+    error: str | None = None
 
 
 @dataclass
 class _Rollout:
     execution: asyncio.Task[JobResult]
-    output: CodingRolloutOutput | None = None
+    output: RolloutOutput | None = None
 
 
-class ModalCodingHarness:
+class TerminalBenchHarness:
     def __init__(self) -> None:
         self._rollouts: dict[str, _Rollout] = {}
         self._submission_keys: dict[str, str] = {}
@@ -71,58 +83,34 @@ class ModalCodingHarness:
             raise HTTPException(
                 status_code=422, detail="Invalid Harbor dataset configuration"
             ) from exc
-        _validate_prompt(request.task)
 
-        rollout_id = f"coding_{uuid.uuid4().hex}"
-        execution = asyncio.create_task(
-            _run_harbor(rollout_id, request, dataset),
-            name=f"terminal-bench-{rollout_id}",
-        )
+        rollout_id = f"tbench_{uuid.uuid4().hex}"
+        execution = asyncio.create_task(_run_harbor(rollout_id, request, dataset))
         self._rollouts[rollout_id] = _Rollout(execution=execution)
         self._submission_keys[idempotency_key] = rollout_id
         return rollout_id
 
-    def status(self, rollout_id: str) -> RolloutStatus:
-        rollout = self._get(rollout_id)
-        if rollout.output is not None:
-            return (
-                RolloutStatus.failed
-                if rollout.output.error
-                else RolloutStatus.completed
-            )
-        if not rollout.execution.done():
-            return RolloutStatus.running
-        if rollout.execution.cancelled() or rollout.execution.exception() is not None:
-            return RolloutStatus.failed
-        if rollout.execution.result().stats.n_errored_trials:
-            return RolloutStatus.failed
-        return RolloutStatus.completed
-
-    async def outputs(self, rollout_id: str) -> CodingRolloutOutput:
-        rollout = self._get(rollout_id)
+    async def outputs(self, rollout_id: str) -> RolloutOutput:
+        rollout = self.get(rollout_id)
         if rollout.output is not None:
             return rollout.output
         try:
             result = await asyncio.shield(rollout.execution)
-        except asyncio.CancelledError:
-            if not rollout.execution.cancelled():
-                raise
-            output = CodingRolloutOutput(error="Harbor rollout was cancelled")
         except Exception as exc:
-            output = CodingRolloutOutput(error=f"{type(exc).__name__}: {exc}")
+            output = RolloutOutput(error=f"{type(exc).__name__}: {exc}")
         else:
             output = _output_from_result(result)
         rollout.output = output
         return output
 
-    def _get(self, rollout_id: str) -> _Rollout:
+    def get(self, rollout_id: str) -> _Rollout:
         rollout = self._rollouts.get(rollout_id)
         if rollout is None:
             raise HTTPException(status_code=404, detail="Unknown rollout")
         return rollout
 
 
-def create_app(harness: ModalCodingHarness) -> FastAPI:
+def create_app(harness: TerminalBenchHarness) -> FastAPI:
     app = FastAPI()
 
     @app.post("/submit", response_model=SubmitResponse)
@@ -136,22 +124,22 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
 
     @app.post("/get_status", response_model=StatusResponse)
     async def get_status(request: RolloutRequest) -> StatusResponse:
-        if harness.status(request.rollout_id) is RolloutStatus.running:
+        if not harness.get(request.rollout_id).execution.done():
             return StatusResponse(status=RolloutStatus.running)
         output = await harness.outputs(request.rollout_id)
         return StatusResponse(
-            status=harness.status(request.rollout_id),
+            status=RolloutStatus.failed if output.error else RolloutStatus.completed,
             error_message=output.error and output.error[:2000],
         )
 
-    @app.post("/collect_outputs", response_model=CodingRolloutOutput | None)
-    async def collect_outputs(request: RolloutRequest) -> CodingRolloutOutput | None:
+    @app.post("/collect_outputs", response_model=RolloutOutput | None)
+    async def collect_outputs(request: RolloutRequest) -> RolloutOutput | None:
         output = await harness.outputs(request.rollout_id)
         return output if _reward(output) is not None else None
 
     @app.post("/submit_grading")
     async def submit_grading(request: SubmitGradingRequest) -> None:
-        harness.status(request.rollout_id)
+        harness.get(request.rollout_id)
 
     @app.post("/get_grading_status", response_model=GradingStatusResponse)
     async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
@@ -178,29 +166,16 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
     return app
 
 
-def _reward(output: CodingRolloutOutput) -> float | None:
+def _reward(output: RolloutOutput) -> float | None:
     reward = (output.rewards or {}).get("reward")
     if reward is None or not math.isfinite(reward):
         return None
     return reward
 
 
-def _validate_prompt(task: HarnessTask) -> None:
-    if len(task.input) != 1:
-        raise HTTPException(status_code=422, detail="Expected one input message")
-    try:
-        message = Message.model_validate(task.input[0])
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=422, detail="Expected one text user message"
-        ) from exc
-    if message.role != "user" or not isinstance(message.content, str):
-        raise HTTPException(status_code=422, detail="Expected one text user message")
-
-
-def _output_from_result(result: JobResult) -> CodingRolloutOutput:
+def _output_from_result(result: JobResult) -> RolloutOutput:
     if len(result.trial_results) != 1:
-        return CodingRolloutOutput(
+        return RolloutOutput(
             job_id=str(result.id),
             error=f"Harbor produced {len(result.trial_results)} trial results; expected one",
         )
@@ -208,9 +183,9 @@ def _output_from_result(result: JobResult) -> CodingRolloutOutput:
     trial = result.trial_results[0]
     exception = trial.exception_info
     agent_failed = (
-        exception is not None and exception.exception_type != "AgentTimeoutError"
+        exception is not None and exception.exception_type != AgentTimeoutError.__name__
     )
-    output = CodingRolloutOutput(
+    output = RolloutOutput(
         job_id=str(result.id),
         trial_id=str(trial.id),
         trial_uri=trial.trial_uri,
@@ -252,11 +227,7 @@ async def _run_harbor(
             agents=[
                 AgentConfig(
                     import_path=f"{__name__}:PinnedAcpAgent",
-                    kwargs={
-                        "registry_spec": ACP_AGENT,
-                        "auth_policy": "auto",
-                        "permission_mode": "allow",
-                    },
+                    kwargs={"registry_spec": ACP_AGENT},
                     env={
                         "AC2_ROLLOUT_API_KEY": request.ac_api_key,
                         "OPENCODE_CONFIG_CONTENT": json.dumps(opencode_config),
@@ -281,7 +252,7 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-    uvicorn.run(create_app(ModalCodingHarness()), host=args.host, port=args.port)
+    uvicorn.run(create_app(TerminalBenchHarness()), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
