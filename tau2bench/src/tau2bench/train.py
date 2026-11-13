@@ -17,7 +17,6 @@ def main() -> None:
     run = client.train.run(
         TrainingConfig(
             model=args.model,
-            n_training_replicas=1,
             n_inference_replicas=1,
             num_train_steps=args.steps,
             samples_per_problem=4,
