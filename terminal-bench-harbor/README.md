@@ -49,9 +49,10 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
   passes on Harbor's error message for a failed trial.
 - `/collect_outputs` caches and returns Harbor's job IDs, verifier rewards, and
   error metadata. It returns `null` for a trial that produced no reward.
-  Harbor runs the tests even when the agent process fails, for example because
-  the model endpoint was down. The server discards that reward, so the trial
-  fails instead of scoring 0. An agent that ran out of time keeps its reward.
+  Harbor runs the tests even when the trial reports an error, for example
+  because the model endpoint was down. Unless the error is the agent running
+  out of time, the server discards that reward, so the trial fails instead of
+  scoring 0.
 - `/submit_grading`, `/get_grading_status`, and `/collect_score` are the grading
   half of the contract. Harbor has already run the task's tests by the time the
   rollout finishes, so grading completes at once and `/collect_score` returns
@@ -122,7 +123,9 @@ uv run --extra harness python upload_dataset.py
 ```
 
 `upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset,
-`fix-git`, `openssl-selfsigned-cert`, and `regex-log` first. Each
+`fix-git`, `openssl-selfsigned-cert`, and `regex-log` first. An existing
+dataset keeps its order; upload to a new dataset name to get these three
+first. Each
 AC2 task carries the task instruction as its input and the Harbor dataset,
 the dataset version's content hash, and task name as `env_params`.
 
