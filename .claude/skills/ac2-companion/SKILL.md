@@ -1,6 +1,6 @@
 ---
 name: ac2-companion
-description: Helps users build, evaluate, deploy, and train agents on Applied Compute Agent Cloud (AC2). Use when the user mentions AC2, the `ac2` CLI, `ac2.runtime`/`ac2.sdk`/`ac2.tracing`, AC2 primitives (`Agent`/`Environment`/`Grader`/`Orchestrator`/`Task`), `EvalConfig`/`TrainingConfig`/`DeploymentConfig`, `ac2 eval run`/`ac2 train run`/`ac2 deployments run`, `client.eval.run`/`client.train.run`/`client.deployments.create`, dispatching to AC2 clusters (e.g. `ac-jurassic`), or `platform.appliedcompute.com` — even when "AC2" isn't said explicitly.
+description: Helps users build, evaluate, deploy, and train agents on Applied Compute Agent Cloud (AC2). Use when the user mentions AC2, the `ac2` CLI, `ac2.runtime`/`ac2.sdk`/`ac2.tracing`, AC2 primitives (`Agent`/`Environment`/`Grader`/`Orchestrator`/`Task`), `EvalConfig`/`TrainingConfig`/`DeploymentConfig`, `ac2 eval run`/`ac2 train run`/`ac2 deployments run`, `client.eval.run`/`client.train.run`/`client.deployments.create`, dispatching to AC2 clusters, or `platform.appliedcompute.com` — even when "AC2" isn't said explicitly.
 argument-hint: "[task or question]"
 allowed-tools: Bash(ac2 config*) Bash(ac2 project*) Bash(ac2 eval*) Bash(ac2 train*) Bash(ac2 deployments*) Bash(ac2 jobs list*) Bash(ac2 datasets*) Bash(ac2 secrets*) Bash(uv run python*)
 user-invocable: true
