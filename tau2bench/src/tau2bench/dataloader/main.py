@@ -36,7 +36,7 @@ DOMAINS = ("airline", "retail")
 SPLITS = ("train", "test", "base")
 Split = Literal["train", "test", "base"]
 
-TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/main/data/tau2/domains"
+TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains"
 POLICY_FILE = "policy.md"
 DB_FILE = "db.json"
 SPLIT_TASKS_FILE = "split_tasks.json"
