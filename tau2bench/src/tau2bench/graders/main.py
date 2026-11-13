@@ -386,24 +386,15 @@ async def _evaluate_nl(client: AsyncOpenAI, messages: Messages, assertions: list
         return {"score": 1.0, "checks": [], "total_expected": 0, "total_met": 0}
 
     user_prompt = f"conversation:\n{_conversation_for_judge(messages)}\n\nexpectedOutcomes:\n{assertions}\n"
-    try:
-        completion = await client.chat.completions.create(
-            model=JUDGE_MODEL,
-            messages=[
-                {"role": "system", "content": NL_ASSERTIONS_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        data = _parse_judge_json(completion.choices[0].message.content or "")
-        results = data.get("results", [])
-    except Exception as e:
-        return {
-            "score": 0.0,
-            "checks": [],
-            "error": str(e),
-            "total_expected": len(assertions),
-            "total_met": 0,
-        }
+    completion = await client.chat.completions.create(
+        model=JUDGE_MODEL,
+        messages=[
+            {"role": "system", "content": NL_ASSERTIONS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    data = _parse_judge_json(completion.choices[0].message.content or "")
+    results = data.get("results", [])
 
     checks = [
         {
@@ -432,7 +423,7 @@ def _parse_judge_json(text: str) -> dict[str, Any]:
     ``gpt-5-*`` and several other current judge models like to wrap JSON output
     in ```json ... ``` fences even when the system prompt asks for raw JSON,
     so a bare ``json.loads`` raises ``JSONDecodeError`` and the NL-assertion
-    component falls through to a 0 score. Stripping the fence is enough.
+    grading fails. Stripping the fence is enough.
     """
     cleaned = text.strip()
     if cleaned.startswith("```"):
