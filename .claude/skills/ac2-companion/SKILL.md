@@ -64,6 +64,11 @@ Grading `status` is one of `queued`, `running`, `completed`, `failed`,
 `ScoreResponse` in `ac2.harness.types`. `ac2 upgrade` upgrades the CLI only; to
 upgrade the project, run `uv lock --upgrade-package ac2 && uv sync`.
 
+- When the model endpoint or infrastructure failed, return `failed` with
+  `error_message` from `/get_status`, `null` from `/collect_outputs`, and
+  `failed` from `/get_grading_status`. Never return a score of 0 for an outage.
+  Return 404 for a rollout ID the server does not know.
+
 ## Workflow
 
 1. Install and log in: `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.

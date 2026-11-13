@@ -28,13 +28,13 @@ describes the Harness API and the connector. For the grading endpoints, see
 
 Apart from the smoke example, each one uses a public benchmark. They follow the
 same steps: upload the dataset, run a baseline eval, then run a short training
-job.
+job. The Terminal-Bench example stops at the eval.
 
 | Directory | Benchmark | Shows |
 | --- | --- | --- |
 | [byoh-smoke-example](byoh-smoke-example/) | Three factual questions | A connectivity check: one model call per rollout, shipped as a container. Start here. |
 | [swebench-opencode](swebench-opencode/) | SWE-bench Verified | A coding agent (OpenCode) |
-| [tau2bench](tau2bench/) | tau2-bench (airline, retail, telecom) | A customer-service agent |
+| [tau2bench](tau2bench/) | tau2-bench (airline, retail) | A customer-service agent |
 | [terminal-bench-harbor](terminal-bench-harbor/) | Terminal-Bench | A terminal agent run through Harbor on Modal (eval only) |
 | [geo3k-vlm](geo3k-vlm/) | Geometry3K | Training a vision-language model |
 
