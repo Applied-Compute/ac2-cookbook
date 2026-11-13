@@ -52,6 +52,8 @@ ac2 harness connect \
   --upstream http://127.0.0.1:8000
 ```
 
+`<project-id>` is the `prj_...` ID in your project's URL on the platform.
+
 Add `--transport https` if your network only allows plain HTTPS. Keep both
 running.
 
@@ -75,16 +77,7 @@ uv run python -m byoh_smoke_example.train
 ```
 
 It runs one training step of `Qwen/Qwen3-4B` with two rollouts through your
-harness. Training calls the model being trained, so it needs no OpenAI key. Pass
-`--steps` for more.
-
-## Build the image
-
-To run the Harness API as a container, build the image. It serves on port 8000
-as a non-root user. The build installs `ac2` from the AC2 package index, so pass
-your AC2 API key as a secret:
-
-```bash
-AC2_API_KEY=key_... docker build --secret id=ac2_api_key,env=AC2_API_KEY \
-  -t byoh-smoke-example .
-```
+harness and prints the training run ID. Check the run with
+`ac2 train get <train-id>`. Training calls the model being trained, so it needs
+no OpenAI key. `global_sampling_concurrency` in `train.py` caps how many
+rollouts reach your harness at once. Pass `--steps` for more steps.
