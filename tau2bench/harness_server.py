@@ -32,6 +32,25 @@ from tau2bench.user import Tau2BenchUser
 
 MAX_STEPS = 200
 
+AGENT_INSTRUCTION = """
+You are a customer service agent that helps the user according to the <policy> provided below.
+In each turn you can either:
+- Send a message to the user.
+- Make a tool call.
+You cannot do both at the same time.
+
+Try to be helpful and always follow the policy. Always make sure you generate valid JSON only.
+""".strip()
+
+SYSTEM_PROMPT = """
+<instructions>
+{agent_instruction}
+</instructions>
+<policy>
+{domain_policy}
+</policy>
+""".strip()
+
 DOMAIN_ENVIRONMENT: dict[str, type[Environment]] = {
     "airline": AirlineEnvironment,
     "retail": RetailEnvironment,
@@ -75,7 +94,11 @@ async def run_conversation(
         }
         for tool in env.tools
     ]
-    messages.append({"role": "system", "content": load_tau2_policy(env.domain)})
+    system_prompt = SYSTEM_PROMPT.format(
+        agent_instruction=AGENT_INSTRUCTION,
+        domain_policy=load_tau2_policy(env.domain),
+    )
+    messages.append({"role": "system", "content": system_prompt})
 
     async with AsyncOpenAI(
         api_key=request.ac_api_key, base_url=request.ac_api_url, timeout=180
