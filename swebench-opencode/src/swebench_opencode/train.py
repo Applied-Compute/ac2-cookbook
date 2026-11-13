@@ -29,8 +29,6 @@ def main() -> None:
             ac2_train_dataset=args.dataset,
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
-            max_response_len=8_192,
-            rollout_sample_timeout=9_000,
             name="swebench-opencode-smoke",
         )
     )
