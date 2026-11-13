@@ -35,7 +35,7 @@ OPENCODE = "/opt/opencode/opencode"
 SANDBOX_TIMEOUT_SECONDS = 2 * 60 * 60
 ROLLOUT_TIMEOUT_SECONDS = 90 * 60
 GRADER_TIMEOUT_SECONDS = 1_500
-OUTPUT_METADATA_LIMIT = 4_000
+OUTPUT_TAIL_CHARS = 4_000
 
 
 class SwebenchTaskParams(BaseModel):
@@ -52,7 +52,6 @@ class CommandResult:
 @dataclass(frozen=True)
 class Rollout:
     sandbox_id: str
-    image_head: str
     patch: str
     opencode: CommandResult
 
@@ -109,7 +108,7 @@ async def collect_outputs(request: RolloutRequest) -> dict[str, JsonValue] | Non
         return None
     rollout = task.result()
     return {
-        "harness_sandbox_id": rollout.sandbox_id,
+        "sandbox_id": rollout.sandbox_id,
         "model_patch_bytes": len(rollout.patch.encode()),
         "returncode": rollout.opencode.returncode,
         "stdout": rollout.opencode.stdout,
@@ -173,11 +172,11 @@ async def run_rollout(
     )
     sandbox = await create_sandbox(image)
     try:
-        head = await run_command(sandbox, "git rev-parse HEAD", timeout_seconds=60)
+        head = await run_command(sandbox, "git rev-parse HEAD")
         if head.returncode != 0:
             raise RuntimeError(f"Failed to read image commit: {head.stderr}")
 
-        setup = await run_command(sandbox, "mkdir -p /task", timeout_seconds=60)
+        setup = await run_command(sandbox, "mkdir -p /task")
         if setup.returncode != 0:
             raise RuntimeError(f"Failed to prepare harness sandbox: {setup.stderr}")
         await sandbox.filesystem.write_text.aio(instruction, "/task/instruction.md")
@@ -188,7 +187,7 @@ async def run_rollout(
             "provider": {
                 "ac2": {
                     "npm": "@ai-sdk/openai-compatible",
-                    "name": "AC2 custom harness",
+                    "name": "AC2",
                     "options": {
                         "apiKey": "{env:AC2_ROLLOUT_API_KEY}",
                         "baseURL": request.ac_api_url,
@@ -211,7 +210,7 @@ async def run_rollout(
                 "OPENCODE_DISABLE_LSP_DOWNLOAD": "true",
                 "OPENCODE_DISABLE_MODELS_FETCH": "true",
             },
-            timeout_seconds=ROLLOUT_TIMEOUT_SECONDS,
+            timeout=ROLLOUT_TIMEOUT_SECONDS,
         )
         patch_result = await run_command(
             sandbox,
@@ -221,7 +220,6 @@ git add --intent-to-add .
 git diff --binary "$IMAGE_HEAD"
 """,
             env={"IMAGE_HEAD": head.stdout.strip()},
-            timeout_seconds=300,
         )
         if patch_result.returncode != 0:
             raise RuntimeError(f"Failed to fetch model patch: {patch_result.stderr}")
@@ -233,12 +231,11 @@ git diff --binary "$IMAGE_HEAD"
         raise RuntimeError(error)
     return Rollout(
         sandbox_id=sandbox.object_id,
-        image_head=head.stdout.strip(),
         patch=patch_result.stdout,
         opencode=CommandResult(
             returncode=opencode.returncode,
-            stdout=opencode.stdout[-OUTPUT_METADATA_LIMIT:],
-            stderr=opencode.stderr[-OUTPUT_METADATA_LIMIT:],
+            stdout=opencode.stdout[-OUTPUT_TAIL_CHARS:],
+            stderr=opencode.stderr[-OUTPUT_TAIL_CHARS:],
         ),
     )
 
@@ -252,73 +249,21 @@ async def grade(
         modal.Image.from_registry(test_spec.instance_image_key).entrypoint([])
     )
     try:
-        head_result = await run_command(
-            sandbox, "git rev-parse HEAD", timeout_seconds=60
-        )
-        if head_result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to verify grading sandbox image commit: {head_result.stderr.strip()}"
-            )
-        if head_result.stdout.strip() != rollout.image_head:
-            raise RuntimeError(
-                "Grading sandbox does not match the harness image commit: "
-                f"expected {rollout.image_head}, got {head_result.stdout.strip()}"
-            )
-        status_result = await run_command(
-            sandbox,
-            "git status --porcelain --untracked-files=no",
-            timeout_seconds=60,
-        )
-        if status_result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to verify grading sandbox worktree: {status_result.stderr.strip()}"
-            )
-        if status_result.stdout.strip():
-            raise RuntimeError(
-                f"Grading sandbox has pre-existing tracked changes: {status_result.stdout.strip()}"
-            )
-
         if rollout.patch:
             await sandbox.filesystem.write_text.aio(rollout.patch, "/tmp/model.patch")
-            check_result = await run_command(
-                sandbox,
-                "git apply --check --binary /tmp/model.patch",
-                timeout_seconds=300,
-            )
-            if check_result.returncode != 0:
-                patch_error = (
-                    check_result.stderr.strip()
-                    or f"git apply --check exited with code {check_result.returncode}"
-                )
+            apply = await run_command(sandbox, "git apply --binary /tmp/model.patch")
+            if apply.returncode != 0:
                 return ScoreResponse(
                     score=0.0,
-                    reasoning=(
-                        "model patch could not be applied to the verified task base; "
-                        "scored as an invalid submission"
-                    ),
-                    artifacts={
-                        "resolved": False,
-                        "patch_applied": False,
-                        "patch_error": patch_error[:2_000],
-                    },
-                )
-
-            apply_result = await run_command(
-                sandbox,
-                "git apply --binary /tmp/model.patch",
-                timeout_seconds=300,
-            )
-            if apply_result.returncode != 0:
-                raise RuntimeError(
-                    "Patch passed git apply --check but failed during application: "
-                    f"{apply_result.stderr}"
+                    reasoning="model patch could not be applied",
+                    artifacts={"resolved": False, "patch_error": apply.stderr[:2_000]},
                 )
 
         await sandbox.filesystem.write_text.aio(test_spec.eval_script, "/root/eval.sh")
         result = await run_command(
             sandbox,
             "cd /testbed && bash /root/eval.sh",
-            timeout_seconds=GRADER_TIMEOUT_SECONDS,
+            timeout=GRADER_TIMEOUT_SECONDS,
         )
     finally:
         await sandbox.terminate.aio()
@@ -343,51 +288,35 @@ async def grade(
         raise RuntimeError(
             f"SWE-bench test output could not be parsed: {result.stdout[-1_000:]}"
         )
-    resolved = bool(instance_report.get("resolved", False))
-    tests_status = instance_report.get("tests_status", {})
-    fail_to_pass = tests_status.get("FAIL_TO_PASS", {})
-    pass_to_pass = tests_status.get("PASS_TO_PASS", {})
-    fail_to_pass_succeeded = sorted(fail_to_pass.get("success", []))
-    fail_to_pass_failed = sorted(fail_to_pass.get("failure", []))
-    pass_to_pass_succeeded = sorted(pass_to_pass.get("success", []))
-    pass_to_pass_failed = sorted(pass_to_pass.get("failure", []))
-
+    resolved = bool(instance_report["resolved"])
+    tests_status = instance_report["tests_status"]
+    fail_to_pass = tests_status["FAIL_TO_PASS"]
+    pass_to_pass = tests_status["PASS_TO_PASS"]
     return ScoreResponse(
         score=1.0 if resolved else 0.0,
         reasoning=(
             f"resolved={resolved}; "
-            f"fail-to-pass={len(fail_to_pass_succeeded)}/"
-            f"{len(fail_to_pass_succeeded) + len(fail_to_pass_failed)}; "
-            f"pass-to-pass={len(pass_to_pass_succeeded)}/"
-            f"{len(pass_to_pass_succeeded) + len(pass_to_pass_failed)}"
+            f"fail-to-pass={len(fail_to_pass['success'])}/"
+            f"{len(fail_to_pass['success']) + len(fail_to_pass['failure'])}; "
+            f"pass-to-pass={len(pass_to_pass['success'])}/"
+            f"{len(pass_to_pass['success']) + len(pass_to_pass['failure'])}"
         ),
-        artifacts={
-            "resolved": resolved,
-            "model_patch_bytes": len(rollout.patch.encode()),
-            "fail_to_pass_succeeded": fail_to_pass_succeeded,
-            "fail_to_pass_failed": fail_to_pass_failed,
-            "pass_to_pass_succeeded": pass_to_pass_succeeded,
-            "pass_to_pass_failed": pass_to_pass_failed,
-            "grader_returncode": result.returncode,
-        },
+        artifacts={"resolved": resolved, "tests_status": tests_status},
     )
 
 
 async def create_sandbox(image: modal.Image) -> modal.Sandbox:
-    modal_app = await modal.App.lookup.aio(
-        "swebench-opencode-custom-harness", create_if_missing=True
+    modal_app = await modal.App.lookup.aio("swebench-opencode", create_if_missing=True)
+    return await modal.Sandbox.create.aio(
+        "sleep",
+        "infinity",
+        app=modal_app,
+        image=image,
+        timeout=SANDBOX_TIMEOUT_SECONDS,
+        workdir=WORKDIR,
+        cpu=4,
+        memory=16_384,
     )
-    with modal.enable_output():
-        return await modal.Sandbox.create.aio(
-            "sleep",
-            "infinity",
-            app=modal_app,
-            image=image,
-            timeout=SANDBOX_TIMEOUT_SECONDS,
-            workdir=WORKDIR,
-            cpu=4,
-            memory=16_384,
-        )
 
 
 async def run_command(
@@ -395,22 +324,20 @@ async def run_command(
     command: str,
     *,
     env: dict[str, str | None] | None = None,
-    timeout_seconds: int = 0,
+    timeout: int | None = None,
 ) -> CommandResult:
     proc = await sandbox.exec.aio(
         "bash",
         "-c",
         command,
         env=env,
-        timeout=timeout_seconds or None,
+        timeout=timeout,
         text=False,
     )
-    await proc.wait.aio()
+    returncode = await proc.wait.aio()
     stdout = (await proc.stdout.read.aio()).decode("utf-8", errors="replace")
     stderr = (await proc.stderr.read.aio()).decode("utf-8", errors="replace")
-    if proc.returncode is None:
-        raise RuntimeError("Sandbox process ended without an exit code")
-    return CommandResult(returncode=proc.returncode, stdout=stdout, stderr=stderr)
+    return CommandResult(returncode=returncode, stdout=stdout, stderr=stderr)
 
 
 def _opencode_error(opencode: CommandResult) -> str | None:
