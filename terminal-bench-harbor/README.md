@@ -20,6 +20,10 @@ Terminal-Bench 2.0 is released under the
 The example stops at eval: Terminal-Bench task files carry a canary string
 asking that benchmark data never appear in training corpora.
 
+You need an AC2 account, a [Modal](https://modal.com) account, and an OpenAI
+API key. Harbor is installed with the example's dependencies, and Harbor
+installs OpenCode inside each sandbox. The default eval runs three short tasks.
+
 ## What this example teaches
 
 This is an **external execution and grading in your infrastructure** pattern:
@@ -63,6 +67,10 @@ The server gives OpenCode the rollout-scoped `ac_api_url` and `ac_api_key` from
 `/submit`. OpenCode therefore uses the model selected by AC2, and AC2 records
 its calls even though the sandbox is outside the AC2 job.
 
+`PinnedAcpAgent` is not part of the contract. Harbor drives OpenCode through
+an ACP client that it installs in the sandbox, and Harbor 0.20 does not run
+with version 1.0 of that client, so the class keeps the client below 1.0.
+
 The AC2 Harness Connector does not contain your harness logic. It is an
 unmodified bridge that opens an outbound WebSocket to AC2 and forwards
 requests to these private HTTP endpoints.
@@ -88,7 +96,6 @@ AC2 job.
 | File | Responsibility |
 | --- | --- |
 | `harness_server.py` | Your Harness API and Harbor job coordinator |
-| `src/terminal_bench_harbor/models.py` | Harbor task settings and JSON output contract |
 | `src/terminal_bench_harbor/eval.py` | Eval configuration that selects the self-hosted lifecycle |
 | `upload_dataset.py` | Downloads the tasks through Harbor and creates one AC2 task per Terminal-Bench task |
 
@@ -96,12 +103,12 @@ AC2 job.
 
 For your own use case:
 
-1. Replace `_run_harbor` with the call that submits work to your scheduler or
-   sandbox system.
+1. Replace `_run_harbor` and `PinnedAcpAgent` with the call that submits work
+   to your scheduler or sandbox system.
 2. Replace `HarborDataset` with the private task IDs and execution settings your
    server needs.
 3. Translate your scheduler's states in `/get_status`.
-4. Replace `CodingRolloutOutput` with the artifacts and metadata you want
+4. Replace `RolloutOutput` with the artifacts and metadata you want
    recorded, and return your own score from `/collect_score`.
 5. Persist idempotency keys, job IDs, and cached outputs before running multiple
    replicas or relying on restart recovery.
@@ -122,15 +129,17 @@ uv run modal setup
 uv run --extra harness python upload_dataset.py
 ```
 
-`upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset,
-`fix-git`, `openssl-selfsigned-cert`, and `regex-log` first. An existing
-dataset keeps its order; upload to a new dataset name to get these three
-first. Each
-AC2 task carries the task instruction as its input and the Harbor dataset,
-the dataset version's content hash, and task name as `env_params`.
+`modal setup` opens a browser to log in and saves a Modal token on your
+machine; it stays there.
 
-Modal credentials remain on your machine. Store the model provider key
-in the project:
+`upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset and
+three short ones (`fix-git`, `openssl-selfsigned-cert`, and `regex-log`) to
+`terminal-bench-smoke`. Each AC2 task carries the task instruction as its input
+and the Harbor dataset, the dataset version's content hash, and task name as
+`env_params`.
+
+AC2 calls the model, so the model provider key is stored in AC2. The sandbox
+only receives a key scoped to its rollout:
 
 ```bash
 ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
@@ -167,7 +176,7 @@ dedicated second terminal, export those values and start the connector:
 export AC2_SERVICE_CLIENT_ID=svc_...
 export AC2_SERVICE_CLIENT_SECRET=...
 
-ac2 harness connect \
+uv run ac2 harness connect \
   --project-id <project-id> \
   --upstream http://127.0.0.1:8000
 ```
@@ -179,11 +188,10 @@ By default the connector holds one outbound WebSocket to AC2. If your network
 only allows plain HTTPS requests, run it in HTTPS mode instead: it then fetches
 work with a long poll and posts results, and every connection it makes is an
 HTTPS request that returns within `--poll-wait` seconds (30 by default, 120 at
-most). Requires an SDK that lists `--transport` in
-`ac2 harness connect --help`.
+most).
 
 ```bash
-ac2 harness connect \
+uv run ac2 harness connect \
   --project-id <project-id> \
   --upstream http://127.0.0.1:8000 \
   --transport https \
@@ -205,12 +213,12 @@ In a third terminal without the connector environment variables:
 uv run python -m terminal_bench_harbor.eval
 ```
 
-The eval runs the first three tasks in the dataset (`fix-git`,
-`openssl-selfsigned-cert`, and `regex-log`) with `gpt-5.6-luna`, all at once.
-Each of the three has a 15-minute agent timeout. Raise `num_tasks` in `eval.py`
-to run more. Each task starts its own Modal sandbox and may run up to the agent
-timeout Terminal-Bench sets for it, which ranges from 10 minutes to over 3
-hours. AC2 waits two hours for a rollout and then records it as an error.
+The eval runs the three tasks in `terminal-bench-smoke` with `gpt-5.6-luna`.
+Each starts its own Modal sandbox and has a 15-minute agent timeout.
+
+Pass `--dataset terminal-bench` to run all 89 tasks. Terminal-Bench sets each
+task's agent timeout, and AC2 waits two hours for a rollout before recording it
+as an error. Two tasks allow the agent two hours or more.
 
 The harness contract has no cancel call. After AC2 gives up on a rollout or the
 eval is interrupted, the Harbor trial keeps running, and its Modal sandbox
