@@ -8,16 +8,14 @@ loop, the domain tools and database, the simulated customer, and the tau2
 reward. AC2 supplies the model endpoint for the agent, records the trace, and
 stores the score your harness returns.
 
-You need an AC2 account, harness connector credentials from an organization
-admin, and an OpenAI API key. The key is used in two places: AC2 stores it as a
-secret so the eval job can call the agent's model, and your harness reads it
-from the environment for the simulated customer and the judge.
+You need the AC2 CLI, Harness Connector credentials, and an OpenAI API key. The
+key is used in two places: AC2 stores it as a secret so the eval job can call
+the agent's model, and your harness reads it from the environment for the
+simulated customer and the judge.
 
-## Set up
+## Set up the project
 
 Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
-
-Grading in the harness needs `ac2` 0.3.97 or later.
 
 ```bash
 ac2 project init
@@ -30,7 +28,7 @@ ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 `tau2bench-airline-test` (20), and `tau2bench-airline-base` (all 50). The
 secret is for the eval's model, `gpt-5.6-luna`.
 
-## Run
+## Start your services
 
 Start the Harness API on `http://127.0.0.1:8000` with your OpenAI key in its
 environment:
@@ -52,17 +50,23 @@ ac2 harness connect \
   --upstream http://127.0.0.1:8000
 ```
 
-Run the eval in a third terminal, without the connector variables:
+`<project-id>` is the `prj_...` ID in your project's URL on the platform. Add
+`--transport https` if your network only allows plain HTTPS. Keep both running.
+
+## Run the eval
+
+In a third terminal, without the connector variables:
 
 ```bash
 uv run python -m tau2bench.eval
 ```
 
-This runs the 20 airline test tasks on `gpt-5.6-luna`. Pass `--model` for
-another model. For the retail domain, upload it with
+It runs the 20 airline test tasks on `gpt-5.6-luna` through your harness and
+prints the eval ID. Check the result with `ac2 eval get <eval-id>`. Pass
+`--model` for another model. For the retail domain, upload it with
 `upload_dataset.py --domain retail` and pass `--dataset tau2bench-retail-test`.
 
-## Train
+## Run training
 
 With the Harness API and connector still running:
 
@@ -70,11 +74,14 @@ With the Harness API and connector still running:
 uv run python -m tau2bench.train
 ```
 
-The default is one training step of `Qwen/Qwen3-4B` on two airline tasks with
-four conversations each. Training calls the model being trained, so it does
+It runs one training step of `Qwen/Qwen3-4B` on two airline tasks with four
+conversations each and prints the training run ID. Check the run with
+`ac2 train get <train-id>`. Training calls the model being trained, so it does
 not use the stored secret; the harness still uses your key for the simulated
-customer. Pass `--steps` for more steps. The run saves a checkpoint when it
-finishes.
+customer. `global_sampling_concurrency` in
+[`train.py`](src/tau2bench/train.py) bounds how many conversations reach your
+harness at once. Pass `--steps` for more steps. The run saves a checkpoint when
+it finishes.
 
 ## How it works
 
