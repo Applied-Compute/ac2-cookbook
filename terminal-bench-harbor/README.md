@@ -17,6 +17,8 @@ The tasks are Harbor's
 dataset: 89 tasks, each with its own container image, instruction, and tests.
 Terminal-Bench 2.0 is released under the
 [Apache License 2.0](https://github.com/harbor-framework/terminal-bench-2/blob/main/LICENSE).
+The example stops at eval: Terminal-Bench task files carry a canary string
+asking that benchmark data never appear in training corpora.
 
 ## What this example teaches
 
@@ -47,6 +49,9 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
   passes on Harbor's error message for a failed trial.
 - `/collect_outputs` caches and returns Harbor's job IDs, verifier rewards, and
   error metadata. It returns `null` for a trial that produced no reward.
+  Harbor runs the tests even when the agent process fails, for example because
+  the model endpoint was down. The server discards that reward, so the trial
+  fails instead of scoring 0. An agent that ran out of time keeps its reward.
 - `/submit_grading`, `/get_grading_status`, and `/collect_score` are the grading
   half of the contract. Harbor has already run the task's tests by the time the
   rollout finishes, so grading completes at once and `/collect_score` returns
@@ -116,7 +121,8 @@ uv run modal setup
 uv run --extra harness python upload_dataset.py
 ```
 
-`upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset. Each
+`upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset,
+`fix-git`, `openssl-selfsigned-cert`, and `regex-log` first. Each
 AC2 task carries the task instruction as its input and the Harbor dataset,
 the dataset version's content hash, and task name as `env_params`.
 
@@ -196,11 +202,16 @@ In a third terminal without the connector environment variables:
 uv run python -m terminal_bench_harbor.eval
 ```
 
-The eval runs the first four tasks in the dataset with `gpt-5.6-luna`, all at
-once. Raise `num_tasks` in `eval.py` to run more. Each task starts its own
-Modal sandbox and may run up to the agent timeout Terminal-Bench sets for it,
-which ranges from 10 minutes to over 3 hours. AC2 waits two hours for a rollout
-and then records it as an error.
+The eval runs the first three tasks in the dataset (`fix-git`,
+`openssl-selfsigned-cert`, and `regex-log`) with `gpt-5.6-luna`, all at once.
+Each of the three has a 15-minute agent timeout. Raise `num_tasks` in `eval.py`
+to run more. Each task starts its own Modal sandbox and may run up to the agent
+timeout Terminal-Bench sets for it, which ranges from 10 minutes to over 3
+hours. AC2 waits two hours for a rollout and then records it as an error.
+
+The harness contract has no cancel call. After AC2 gives up on a rollout or the
+eval is interrupted, the Harbor trial keeps running, and its Modal sandbox
+keeps billing, until Harbor's own task timeout.
 
 If connector credentials were previously saved globally, remove them first:
 

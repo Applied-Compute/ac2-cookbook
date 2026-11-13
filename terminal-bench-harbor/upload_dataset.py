@@ -11,6 +11,7 @@ from harbor.tasks.client import TaskClient
 
 HARBOR_DATASET = "terminal-bench/terminal-bench-2"
 HARBOR_REF = "sha256:c6fc2e2382c1dbae99b2d5ecd2f4f4a60c3c01e0d84642d69b4afd92e99d078b"
+EVAL_TASKS = ("fix-git", "openssl-selfsigned-cert", "regex-log")
 
 
 async def load_tasks() -> list[Task]:
@@ -46,7 +47,11 @@ def main() -> None:
             args.dataset,
             description="Terminal-Bench 2.0 tasks run through Harbor by a self-hosted Harness API.",
         )
-    client.datasets.add_tasks(args.dataset, tasks=tasks)
+    first = [task for task in tasks if task.id in EVAL_TASKS]
+    client.datasets.add_tasks(args.dataset, tasks=first)
+    client.datasets.add_tasks(
+        args.dataset, tasks=[task for task in tasks if task.id not in EVAL_TASKS]
+    )
     print(
         f"Uploaded {len(tasks)} {HARBOR_DATASET} tasks to {args.project}/{args.dataset}"
     )
