@@ -22,10 +22,7 @@ async def main() -> None:
             max_parallel=args.max_parallel,
             name="swebench-opencode",
             custom_harness=CustomHarnessConfig(
-                model=ModelConfiguration(
-                    model=args.model,
-                    kwargs={"max_output_tokens": 32_768},
-                ),
+                model=ModelConfiguration(model=args.model),
             ),
         )
     )
