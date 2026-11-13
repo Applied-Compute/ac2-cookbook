@@ -14,8 +14,6 @@ from openai import AsyncOpenAI
 
 STOP_SIGNALS = ("###STOP###", "###TRANSFER###", "###OUT-OF-SCOPE###")
 
-USER_SIMULATOR_ERROR = "user_simulator_error"
-
 USER_SIMULATOR_MODEL = "gpt-5.6-luna"
 
 GLOBAL_GUIDELINES = """\

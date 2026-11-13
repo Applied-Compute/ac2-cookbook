@@ -28,7 +28,7 @@ from tau2bench.environments import (
     TelecomEnvironment,
 )
 from tau2bench.graders import grade
-from tau2bench.user import USER_SIMULATOR_ERROR, Tau2BenchUser
+from tau2bench.user import Tau2BenchUser
 
 MAX_STEPS = 200
 
@@ -42,7 +42,6 @@ DOMAIN_ENVIRONMENT: dict[str, type[Environment]] = {
 class RolloutOutput(BaseModel):
     num_messages: int
     termination_reason: str | None = None
-    error: str | None = None
 
 
 @dataclass
@@ -54,7 +53,7 @@ class Rollout:
 
 
 app = FastAPI()
-openai_client = AsyncOpenAI()
+openai_client = AsyncOpenAI(timeout=180)
 rollouts: dict[str, Rollout] = {}
 rollout_ids_by_key: dict[str, str] = {}
 
@@ -79,7 +78,7 @@ async def run_conversation(
     messages.append({"role": "system", "content": load_tau2_policy(env.domain)})
 
     async with AsyncOpenAI(
-        api_key=request.ac_api_key, base_url=request.ac_api_url
+        api_key=request.ac_api_key, base_url=request.ac_api_url, timeout=180
     ) as model:
         while not env.terminated:
             if len(messages) > MAX_STEPS:
@@ -90,15 +89,12 @@ async def run_conversation(
             last = messages[-1]
             if last["role"] != "tool":
                 if last["role"] == "assistant" and not last["content"]:
-                    break
-                try:
-                    customer_text = await user.respond(
-                        last["content"] if last["role"] == "assistant" else None
-                    )
-                except Exception:
                     env.terminated = True
-                    env.termination_reason = USER_SIMULATOR_ERROR
+                    env.termination_reason = "agent_error"
                     break
+                customer_text = await user.respond(
+                    last["content"] if last["role"] == "assistant" else None
+                )
                 if customer_text is None:
                     break
                 messages.append({"role": "user", "content": customer_text})
@@ -137,7 +133,7 @@ async def run_conversation(
 
 async def run_grading(request: SubmitGradingRequest, rollout: Rollout) -> ScoreResponse:
     if request.rollout_status is RolloutStatus.failed:
-        return ScoreResponse(score=0, reasoning="The rollout failed before it finished.")
+        raise RuntimeError("The rollout failed before it finished.")
     return await grade(
         request.task.grader_params or {}, rollout.messages, rollout.env, openai_client
     )
@@ -180,13 +176,15 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
     return StatusResponse(status=RolloutStatus.completed)
 
 
-@app.post("/collect_outputs", response_model=RolloutOutput)
-async def collect_outputs(request: RolloutRequest) -> RolloutOutput:
+@app.post("/collect_outputs", response_model=RolloutOutput | None)
+async def collect_outputs(request: RolloutRequest) -> RolloutOutput | None:
     rollout = _rollout(request.rollout_id)
+    if _error(rollout.conversation) is not None:
+        rollout.env = None
+        return None
     return RolloutOutput(
         num_messages=len(rollout.messages),
         termination_reason=getattr(rollout.env, "termination_reason", None),
-        error=_error(rollout.conversation),
     )
 
 

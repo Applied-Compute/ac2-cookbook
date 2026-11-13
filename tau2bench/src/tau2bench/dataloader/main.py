@@ -15,12 +15,9 @@ introspect the splits without loading tasks.
 
 Each task is mapped to an ac2 :class:`~ac2.runtime.Task`:
 
-- ``user_scenario``        → markdown ``user_instructions`` in ``env_params`` for ``Tau2BenchUser``
+- ``user_scenario``        → markdown ``user_instructions`` for ``Tau2BenchUser``
 - ``initial_state``        → ``env_params`` (env applies it on setup) + ``grader_params``
 - ``evaluation_criteria``  → flattened into ``grader_params``
-
-AC2 sends ``env_params`` to the harness with ``/submit`` and ``grader_params``
-with ``/submit_grading``.
 
 If a task specifies ``reward_basis``, it is preserved; otherwise the grader
 uses its default (``[DB, COMMUNICATE]``).
@@ -50,7 +47,7 @@ CACHE_DIR = Path(__file__).parent / "cache"
 def _fetch(url: str, dest: Path) -> bytes:
     if not dest.exists():
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with urlopen(url) as resp:
+        with urlopen(url, timeout=60) as resp:
             dest.write_bytes(resp.read())
     return dest.read_bytes()
 

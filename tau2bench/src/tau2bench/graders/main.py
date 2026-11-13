@@ -67,7 +67,7 @@ Example response structure:
 """
 
 
-# ── Conversation helpers ─────────────────────────────────────────────────
+# ── Trace helpers ────────────────────────────────────────────────────────
 
 
 def _extract_tool_calls(messages: Messages) -> list[dict[str, Any]]:
@@ -298,9 +298,9 @@ async def grade(
     env: EnvironmentProtocol,
     client: AsyncOpenAI,
 ) -> ScoreResponse:
-    """Multi-component tau2bench grade for one finished conversation.
+    """Multi-component tau2bench grader.
 
-    ``params`` is the task's ``grader_params``:
+    ``grader_params`` carries the per-task expectations:
 
     - ``expected_actions``  : list[{"name", "arguments", "compare_args"?}]
     - ``communicate_info``  : list[str]

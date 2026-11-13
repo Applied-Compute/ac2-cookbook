@@ -1,7 +1,7 @@
 # tau2-bench through a self-hosted harness
 
 The [tau2-bench](https://github.com/sierra-research/tau2-bench) customer-service
-benchmark (airline, retail, telecom) as a
+benchmark as a
 [self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted).
 The whole benchmark runs in a FastAPI process in your network: the conversation
 loop, the domain tools and database, the simulated customer, and the tau2
@@ -13,14 +13,15 @@ stores the score your harness returns.
 This is a **multi-turn harness that also grades**:
 
 - Each rollout is an `asyncio` task that alternates between a simulated
-  customer and the agent until the customer ends the conversation, the agent
-  transfers to a human, or the conversation reaches tau2-bench's 200-step
-  limit.
+  customer and the agent until the customer ends the conversation or the agent
+  transfers to a human. A conversation that passes 200 messages, or in which
+  the agent sends an empty reply, is cut short and scores 0.
 - The agent's model calls go to the `ac_api_url` and `ac_api_key` AC2 sends
   with `/submit`, using the model name `policy`. The harness executes every
   tool call against an in-memory copy of the domain database.
-- The simulated customer and the natural-language judge call `gpt-5.6-luna`
-  with your own OpenAI key. Those calls are not part of the AC2 trace.
+- The simulated customer calls `gpt-5.6-luna` with your own OpenAI key, and
+  so does the natural-language judge for tasks whose reward includes
+  `NL_ASSERTION`. Those calls are not part of the AC2 trace.
 - The eval and training configs pass no grader. AC2 asks the harness for the
   score, and the harness compares the final database with a replay of the
   task's expected actions and checks the required information was
@@ -35,8 +36,8 @@ rollouts in memory and exposes six routes:
 | --- | --- |
 | `/submit` | Reads `domain`, `user_instructions`, and `initial_state` from the task's `env_params`, starts the conversation, and returns a rollout ID. `Idempotency-Key` makes a retry return the same ID. |
 | `/get_status` | Reports whether the conversation is running, completed, or failed. |
-| `/collect_outputs` | Returns the message count and, when the conversation was cut short, the reason. |
-| `/submit_grading` | Receives the task's `grader_params` and starts grading the finished conversation. |
+| `/collect_outputs` | Returns the message count and, when the conversation was cut short, the reason. Returns `null` when the conversation failed. |
+| `/submit_grading` | Receives the task's `grader_params` and starts grading the finished conversation. Grading a failed conversation fails, so a model or network outage is not scored. |
 | `/get_grading_status` | Reports whether grading is running, completed, or failed. |
 | `/collect_score` | Returns the score, the reasoning, and the per-component breakdown. |
 
@@ -57,8 +58,8 @@ AC2 and forwards them to these private routes.
 | `upload_dataset.py` | Registers the tau2-bench splits as AC2 datasets |
 
 `.ac2ignore` keeps the harness, domain, customer, and reward code out of the
-project AC2 uploads; of the Python files, only `eval.py` and `train.py` are
-sent.
+project AC2 uploads; of the Python files, only `__init__.py`, `eval.py`, and
+`train.py` are sent.
 
 ## Set up the project
 
@@ -74,9 +75,11 @@ ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 ```
 
 `upload_dataset.py` creates `tau2bench-airline-train`, `tau2bench-airline-test`,
-and `tau2bench-airline-base`. Use `--domain retail` or `--domain telecom` for
-the other domains. The project secret is for the eval's model, `gpt-5.6-luna`,
-which is called from the eval job.
+and `tau2bench-airline-base`. Airline is the domain this example was run on;
+`--domain retail` and `--domain telecom` upload the other two. Datasets
+uploaded before this example became a self-hosted harness have a different task
+shape, so re-create them under a new name. The project secret is for the eval's
+model, `gpt-5.6-luna`, which is called from the eval job.
 
 ## Start your services
 
@@ -97,17 +100,10 @@ export AC2_SERVICE_CLIENT_SECRET=...
 
 ac2 harness connect \
   --project-id <project-id> \
-  --upstream http://127.0.0.1:8000 \
-  --transport https
+  --upstream http://127.0.0.1:8000
 ```
 
-Keep both running. To check the six routes before spending on a model, run one
-task with a canned model reply:
-
-```bash
-ac2 harness test --project-id <project-id> --cluster-id <cluster-id> \
-  --dataset tau2bench-airline-test
-```
+Keep both running.
 
 ## Run the eval
 
@@ -131,7 +127,7 @@ uv run python -m tau2bench.train
 The default is one training step of `Qwen/Qwen3-4B` on two airline tasks with
 four conversations each. Training calls the model being trained, so it needs no
 project OpenAI key; the harness still uses yours for the simulated customer.
-Pass `--steps` for more steps. The run saves a checkpoint when it finishes.
+Pass `--steps` for more steps.
 
 ## Source and license
 
