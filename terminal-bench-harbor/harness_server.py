@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -135,11 +136,18 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
 
     @app.post("/get_status", response_model=StatusResponse)
     async def get_status(request: RolloutRequest) -> StatusResponse:
-        return StatusResponse(status=harness.status(request.rollout_id))
+        if harness.status(request.rollout_id) is RolloutStatus.running:
+            return StatusResponse(status=RolloutStatus.running)
+        output = await harness.outputs(request.rollout_id)
+        return StatusResponse(
+            status=harness.status(request.rollout_id),
+            error_message=output.error and output.error[:2000],
+        )
 
-    @app.post("/collect_outputs", response_model=CodingRolloutOutput)
-    async def collect_outputs(request: RolloutRequest) -> CodingRolloutOutput:
-        return await harness.outputs(request.rollout_id)
+    @app.post("/collect_outputs", response_model=CodingRolloutOutput | None)
+    async def collect_outputs(request: RolloutRequest) -> CodingRolloutOutput | None:
+        output = await harness.outputs(request.rollout_id)
+        return output if _reward(output) is not None else None
 
     @app.post("/submit_grading")
     async def submit_grading(request: SubmitGradingRequest) -> None:
@@ -148,23 +156,19 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
     @app.post("/get_grading_status", response_model=GradingStatusResponse)
     async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
         output = await harness.outputs(request.rollout_id)
-        if output.error is None and "reward" not in (output.rewards or {}):
+        if _reward(output) is None:
+            error = output.error or "Harbor verifier did not produce a reward"
             return GradingStatusResponse(
-                status=GradingStatus.failed,
-                error_message="Harbor verifier did not produce a reward",
+                status=GradingStatus.failed, error_message=error[:2000]
             )
         return GradingStatusResponse(status=GradingStatus.completed)
 
     @app.post("/collect_score", response_model=ScoreResponse)
     async def collect_score(request: RolloutRequest) -> ScoreResponse:
         output = await harness.outputs(request.rollout_id)
-        if "reward" not in (output.rewards or {}):
-            return ScoreResponse(
-                score=0,
-                reasoning=f"Harbor trial failed: {output.error}",
-                artifacts={"trial_uri": output.trial_uri},
-            )
-        reward = output.rewards["reward"]
+        reward = _reward(output)
+        if reward is None:
+            raise HTTPException(status_code=409, detail="No Harbor reward")
         return ScoreResponse(
             score=reward,
             reasoning=f"Harbor verifier reward={reward}",
@@ -172,6 +176,13 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
         )
 
     return app
+
+
+def _reward(output: CodingRolloutOutput) -> float | None:
+    reward = (output.rewards or {}).get("reward")
+    if reward is None or not math.isfinite(reward):
+        return None
+    return reward
 
 
 def _validate_prompt(task: HarnessTask) -> None:

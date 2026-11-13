@@ -10,10 +10,11 @@ from harbor.models.task.task import Task as HarborTask
 from harbor.tasks.client import TaskClient
 
 HARBOR_DATASET = "terminal-bench/terminal-bench-2"
+HARBOR_REF = "sha256:c6fc2e2382c1dbae99b2d5ecd2f4f4a60c3c01e0d84642d69b4afd92e99d078b"
 
 
 async def load_tasks() -> list[Task]:
-    dataset = DatasetConfig(name=HARBOR_DATASET)
+    dataset = DatasetConfig(name=HARBOR_DATASET, ref=HARBOR_REF)
     task_ids = [config.get_task_id() for config in await dataset.get_task_configs()]
     downloads = await TaskClient().download_tasks(task_ids)
     return [
@@ -22,7 +23,7 @@ async def load_tasks() -> list[Task]:
             input=[Message(role="user", content=HarborTask(path).instruction)],
             env_params={
                 "name": HARBOR_DATASET,
-                "ref": dataset.ref,
+                "ref": HARBOR_REF,
                 "task_name": task_id.get_name(),
             },
         )
