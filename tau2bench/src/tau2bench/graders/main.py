@@ -6,7 +6,7 @@ Five reward components, multiplicatively composed via ``reward_basis``
 - ``ACTION``      — every expected tool call was made (binary).
 - ``COMMUNICATE`` — every required substring appears in an assistant message
   (case-insensitive, commas stripped).
-- ``DB``          — agent (and, for telecom, user) DB hash matches a fresh
+- ``DB``          — the DB hash matches a fresh
   gold env that replayed the expected actions on the same initial state.
 - ``ENV_ASSERTION`` — every ``assert_*`` env method returns its expected value.
 - ``NL_ASSERTION``  — every natural-language assertion is judged ``true`` by
@@ -193,43 +193,27 @@ def _agent_db_hash(env: EnvironmentProtocol) -> str | None:
     return _hash_dict(state) if state else None
 
 
-def _user_db_hash(env: EnvironmentProtocol) -> str | None:
-    user_db_state = getattr(env, "user_db_state", None)
-    if user_db_state is None:
-        return None
-    state = user_db_state()
-    return _hash_dict(state) if state else None
-
-
 async def _evaluate_db(env: EnvironmentProtocol, grader_params: dict[str, Any]) -> dict[str, Any]:
     expected_actions = grader_params.get("expected_actions", []) or []
     initial_state = grader_params.get("initial_state")
 
     predicted_agent = _agent_db_hash(env)
-    predicted_user = _user_db_hash(env)
 
     gold_env = type(env)()
     gold_agent: str | None = None
-    gold_user: str | None = None
     try:
         await gold_env.setup({"initial_state": initial_state} if initial_state else {})
         await _replay_expected_actions(gold_env, expected_actions)
         gold_agent = _agent_db_hash(gold_env)
-        gold_user = _user_db_hash(gold_env)
     finally:
         await gold_env.teardown()
 
     agent_match = predicted_agent is not None and predicted_agent == gold_agent
-    user_match = predicted_user == gold_user  # both None counts as a match
-    db_match = agent_match and user_match
     return {
-        "score": 1.0 if db_match else 0.0,
+        "score": 1.0 if agent_match else 0.0,
         "agent_match": agent_match,
-        "user_match": user_match,
         "predicted_agent_hash": predicted_agent,
-        "predicted_user_hash": predicted_user,
         "gold_agent_hash": gold_agent,
-        "gold_user_hash": gold_user,
     }
 
 
@@ -242,14 +226,13 @@ async def _evaluate_env_assertions(env: EnvironmentProtocol, assertions: list[di
 
     checks = []
     score = 1.0
-    domain = getattr(env, "domain", None)
     for assertion in assertions:
         env_type = assertion.get("env_type", "assistant")
         func_name = assertion.get("func_name", "")
         args = assertion.get("arguments", {}) or {}
         expected = assertion.get("assert_value", True)
 
-        if env_type == "user" and domain not in ("telecom", "banking"):
+        if env_type == "user":
             checks.append({"assertion": assertion, "met": True, "skipped": True})
             continue
 

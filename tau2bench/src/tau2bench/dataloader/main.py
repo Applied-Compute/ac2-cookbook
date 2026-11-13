@@ -34,12 +34,11 @@ from ac2.runtime import Message, Task
 
 DOMAINS = ("airline", "retail")
 SPLITS = ("train", "test", "base")
-Domain = Literal["airline", "retail", "telecom"]
 Split = Literal["train", "test", "base"]
 
 TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/main/data/tau2/domains"
-POLICY_FILE = {"airline": "policy.md", "retail": "policy.md", "telecom": "main_policy.md"}
-DB_FILE = {"airline": "db.json", "retail": "db.json", "telecom": "db.toml"}
+POLICY_FILE = "policy.md"
+DB_FILE = "db.json"
 SPLIT_TASKS_FILE = "split_tasks.json"
 CACHE_DIR = Path(__file__).parent / "cache"
 
@@ -53,15 +52,13 @@ def _fetch(url: str, dest: Path) -> bytes:
 
 
 def load_tau2_policy(domain: str) -> str:
-    fname = POLICY_FILE[domain]
-    return _fetch(f"{TAU2_RAW_BASE}/{domain}/{fname}", CACHE_DIR / domain / fname).decode()
+    return _fetch(f"{TAU2_RAW_BASE}/{domain}/{POLICY_FILE}", CACHE_DIR / domain / POLICY_FILE).decode()
 
 
 def load_tau2_db(domain: str) -> Path:
     """Lazily fetch the domain DB into the cache and return its path."""
-    fname = DB_FILE[domain]
-    dest = CACHE_DIR / domain / fname
-    _fetch(f"{TAU2_RAW_BASE}/{domain}/{fname}", dest)
+    dest = CACHE_DIR / domain / DB_FILE
+    _fetch(f"{TAU2_RAW_BASE}/{domain}/{DB_FILE}", dest)
     return dest
 
 

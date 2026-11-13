@@ -22,11 +22,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from tau2bench.dataloader import load_tau2_policy
-from tau2bench.environments import (
-    AirlineEnvironment,
-    RetailEnvironment,
-    TelecomEnvironment,
-)
+from tau2bench.environments import AirlineEnvironment, RetailEnvironment
 from tau2bench.graders import grade
 from tau2bench.user import Tau2BenchUser
 
@@ -54,7 +50,6 @@ SYSTEM_PROMPT = """
 DOMAIN_ENVIRONMENT: dict[str, type[Environment]] = {
     "airline": AirlineEnvironment,
     "retail": RetailEnvironment,
-    "telecom": TelecomEnvironment,
 }
 
 
