@@ -32,7 +32,7 @@ from urllib.request import urlopen
 
 from ac2.runtime import Message, Task
 
-DOMAINS = ("airline", "retail", "telecom")
+DOMAINS = ("airline", "retail")
 SPLITS = ("train", "test", "base")
 Domain = Literal["airline", "retail", "telecom"]
 Split = Literal["train", "test", "base"]

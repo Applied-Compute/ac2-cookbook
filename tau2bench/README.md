@@ -76,7 +76,8 @@ ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 
 `upload_dataset.py` creates `tau2bench-airline-train`, `tau2bench-airline-test`,
 and `tau2bench-airline-base`. Airline is the domain this example was run on;
-`--domain retail` and `--domain telecom` upload the other two. Datasets
+`--domain retail` uploads the retail tasks, whose reward uses the
+natural-language judge; neither retail nor the judge has been run. Datasets
 uploaded before this example became a self-hosted harness have a different task
 shape, so re-create them under a new name. The project secret is for the eval's
 model, `gpt-5.6-luna`, which is called from the eval job.
