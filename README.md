@@ -31,9 +31,10 @@ benchmark.
 
 ## Examples
 
-Apart from the smoke example, each one uses a public benchmark. They follow the
-same steps: upload the dataset, run a baseline eval, then run a short training
-job. The Terminal-Bench example stops at the eval.
+Apart from the smoke example, each one uses a public benchmark. Every README
+follows the same steps: set up the project, start your services, run the eval,
+then run training. The benchmark READMEs end with How it works.
+`terminal-bench-harbor` is eval-only.
 
 | Directory | Benchmark | Shows |
 | --- | --- | --- |

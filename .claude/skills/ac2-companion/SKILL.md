@@ -92,7 +92,8 @@ connector (`ac2 upgrade`).
    ac2 harness connect --project-id <project-id> --upstream http://127.0.0.1:8000
    ```
 
-   Add `--transport https` on networks that only pass plain HTTPS. Check
+   `<project-id>` is the `prj_...` ID in the project's URL on the platform.
+   Add `--transport https` if the network only allows plain HTTPS. Check
    connections with `ac2 harness status`.
 6. Run a baseline eval from another terminal, without the connector variables.
 7. Run a short training job. Follow the example's README.
