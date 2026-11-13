@@ -15,7 +15,9 @@ and runs the job.
 Docs: <https://docs.appliedcompute.com/platform/custom-harnesses> and
 <https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted>. The
 index of all pages is <https://docs.appliedcompute.com/llms.txt>. When this file
-and the docs or `ac2 <command> --help` disagree, trust those.
+and the docs or `ac2 <command> --help` disagree, trust those. The exception is
+grading in the harness, which the docs do not cover: follow this file and
+`ac2.harness.types`.
 
 ## The pieces
 
@@ -33,9 +35,9 @@ All endpoints are `POST` with JSON bodies. Request and response models are in
 
 | Endpoint | Request | Response |
 | --- | --- | --- |
-| `/submit` | `ac_api_url`, `ac_api_key`, `task.input`, `task.env_params` | `rollout_id` |
+| `/submit` | `ac_api_url`, `ac_api_key`, `task.input`, optional `task.env_params` | `rollout_id` |
 | `/get_status` | `rollout_id` | `status`, optional `error_message`, `annotations`, `spans` |
-| `/collect_outputs` | `rollout_id` | Any JSON |
+| `/collect_outputs` | `rollout_id` | Any JSON, up to 1 MiB |
 
 - `/submit` starts the work and returns at once. The server creates the
   `rollout_id`. AC2 sends an `Idempotency-Key` header; return the same ID when a
@@ -53,19 +55,23 @@ score through three more endpoints:
 
 | Endpoint | Request | Response |
 | --- | --- | --- |
-| `/submit_grading` | `rollout_id`, `rollout_status`, `task.input`, `task.env_params`, `task.grader_params` | Ignored |
-| `/get_grading_status` | `rollout_id` | `status`, optional `error_message` |
+| `/submit_grading` | `rollout_id`, `rollout_status`, `task.input`, optional `task.env_params` and `task.grader_params` | Ignored |
+| `/get_grading_status` | `rollout_id` | `status`, optional `error_message`, `annotations`, `spans` |
 | `/collect_score` | `rollout_id` | `score`, optional `reasoning`, `artifacts` |
 
 Grading `status` is one of `queued`, `running`, `completed`, `failed`,
-`cancelled`. These endpoints need an SDK whose `ac2.harness.types` defines
-`ScoreResponse`; run `ac2 upgrade` if it does not.
+`cancelled`. These endpoints need a project whose installed `ac2` defines
+`ScoreResponse` in `ac2.harness.types`. `ac2 upgrade` upgrades the CLI only; to
+upgrade the project, run `uv lock --upgrade-package ac2 && uv sync`.
 
 ## Workflow
 
 1. Install and log in: `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
    Re-authenticate later with `ac2 login`.
-2. Register the project from its folder: `ac2 project init`.
+2. Register the project from its folder with `ac2 project init`, then install
+   it with `uv sync` (add `--extra <name>` when the example's README does). If
+   the sync fails on index auth, set `UV_INDEX_AC2_USERNAME=__token__` and
+   `UV_INDEX_AC2_PASSWORD` to your AC2 API key, then retry.
 3. Upload the dataset with the example's `upload_dataset.py`. It uses
    `client.datasets.create` and `client.datasets.add_tasks` with `Task` objects
    (`id`, `input`, `env_params`, `grader_params`).
@@ -82,8 +88,7 @@ Grading `status` is one of `queued`, `running`, `completed`, `failed`,
    Add `--transport https` on networks that only pass plain HTTPS. Check
    connections with `ac2 harness status`.
 6. Run a baseline eval from another terminal, without the connector variables.
-7. Run a short training job, then eval the checkpoint. Follow the example's
-   README for both.
+7. Run a short training job. Follow the example's README.
 
 Eval and training configs select the connector by setting `custom_harness` and
 leaving out the agent, environment, and orchestrator:
