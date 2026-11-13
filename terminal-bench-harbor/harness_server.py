@@ -157,9 +157,9 @@ def create_app(harness: ModalCodingHarness) -> FastAPI:
     async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
         output = await harness.outputs(request.rollout_id)
         if _reward(output) is None:
-            error = output.error or "Harbor verifier did not produce a reward"
             return GradingStatusResponse(
-                status=GradingStatus.failed, error_message=error[:2000]
+                status=GradingStatus.failed,
+                error_message=output.error and output.error[:2000],
             )
         return GradingStatusResponse(status=GradingStatus.completed)
 
@@ -206,17 +206,22 @@ def _output_from_result(result: JobResult) -> CodingRolloutOutput:
         )
 
     trial = result.trial_results[0]
-    return CodingRolloutOutput(
+    exception = trial.exception_info
+    agent_failed = (
+        exception is not None and exception.exception_type != "AgentTimeoutError"
+    )
+    output = CodingRolloutOutput(
         job_id=str(result.id),
         trial_id=str(trial.id),
         trial_uri=trial.trial_uri,
         rewards=trial.verifier_result.rewards
-        if trial.verifier_result is not None
+        if trial.verifier_result is not None and not agent_failed
         else None,
-        error=trial.exception_info.exception_message
-        if trial.exception_info is not None
-        else None,
+        error=exception.exception_message if exception is not None else None,
     )
+    if not output.error and _reward(output) is None:
+        output.error = "Harbor verifier did not produce a reward"
+    return output
 
 
 async def _run_harbor(
