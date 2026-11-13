@@ -6,8 +6,6 @@ import asyncio
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
-from .grader import AnswerGrader
-
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
@@ -19,7 +17,6 @@ async def main() -> None:
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            grader=AnswerGrader(),
             dataset=DatasetSource(dataset=args.dataset, num_tasks=3),
             max_parallel=3,
             name="byoh-smoke-example",

@@ -5,6 +5,11 @@ each rollout makes one model call through the URL and key AC2 sends with
 `/submit`, so it gets a trace and a graded answer. Start here, then replace
 `run_rollout` in [`harness_server.py`](harness_server.py) with your agent.
 
+The harness also grades: a rollout scores 1 when its answer contains the task's
+`expected_answer`, and 0 otherwise. If the model call fails, the harness reports
+the rollout as failed with no output and no score, so an outage is not counted
+as a wrong answer.
+
 ## Set up
 
 Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.

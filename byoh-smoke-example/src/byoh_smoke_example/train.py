@@ -4,8 +4,6 @@ import argparse
 
 from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
-from .grader import AnswerGrader
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -25,7 +23,6 @@ def main() -> None:
             samples_per_problem=2,
             problem_batch_size=1,
             global_sampling_concurrency=2,
-            ac2_grader=AnswerGrader(),
             ac2_train_dataset=args.dataset,
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
