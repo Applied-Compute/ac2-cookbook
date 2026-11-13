@@ -33,6 +33,7 @@ OPENCODE = "/opt/opencode/opencode"
 SANDBOX_TIMEOUT_SECONDS = 2 * 60 * 60
 ROLLOUT_TIMEOUT_SECONDS = 90 * 60
 GRADER_TIMEOUT_SECONDS = 1_500
+MODAL_TIMEOUT_RETURNCODE = -1
 OUTPUT_TAIL_CHARS = 4_000
 
 
@@ -50,8 +51,10 @@ class CommandResult:
 @dataclass(frozen=True)
 class Rollout:
     sandbox_id: str
+    image_head: str
     patch: str
     opencode: CommandResult
+    error: str | None
 
 
 app = FastAPI()
@@ -89,12 +92,8 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
         return StatusResponse(
             status=RolloutStatus.failed, error_message=str(error)[:2000]
         )
-    returncode = rollout.result().opencode.returncode
-    if returncode != 0:
-        return StatusResponse(
-            status=RolloutStatus.failed,
-            error_message=f"OpenCode exited with code {returncode}",
-        )
+    if error := rollout.result().error:
+        return StatusResponse(status=RolloutStatus.failed, error_message=error[:2000])
     return StatusResponse(status=RolloutStatus.completed)
 
 
@@ -229,12 +228,14 @@ git diff --binary "$IMAGE_HEAD"
         raise RuntimeError(error)
     return Rollout(
         sandbox_id=sandbox.object_id,
+        image_head=head.stdout.strip(),
         patch=patch_result.stdout,
         opencode=CommandResult(
             returncode=opencode.returncode,
             stdout=opencode.stdout[-OUTPUT_TAIL_CHARS:],
             stderr=opencode.stderr[-OUTPUT_TAIL_CHARS:],
         ),
+        error=error,
     )
 
 
@@ -247,15 +248,33 @@ async def grade(
         modal.Image.from_registry(test_spec.instance_image_key).entrypoint([])
     )
     try:
+        base = await run_command(
+            sandbox,
+            "git rev-parse HEAD && git status --porcelain --untracked-files=no",
+        )
+        if base.returncode != 0 or base.stdout.strip() != rollout.image_head:
+            raise RuntimeError(
+                f"Grading sandbox is not a clean checkout of {rollout.image_head}: "
+                f"{(base.stdout + base.stderr).strip()}"
+            )
+
         if rollout.patch:
             await sandbox.filesystem.write_text.aio(rollout.patch, "/tmp/model.patch")
-            apply = await run_command(sandbox, "git apply --binary /tmp/model.patch")
-            if apply.returncode != 0:
+            check = await run_command(
+                sandbox, "git apply --check --binary /tmp/model.patch"
+            )
+            if check.returncode != 0:
                 return ScoreResponse(
                     score=0.0,
-                    reasoning="model patch could not be applied",
-                    artifacts={"resolved": False, "patch_error": apply.stderr[:2_000]},
+                    reasoning=(
+                        "model patch does not apply to the task's base commit; "
+                        "scored as an invalid submission"
+                    ),
+                    artifacts={"resolved": False, "patch_error": check.stderr[:2_000]},
                 )
+            apply = await run_command(sandbox, "git apply --binary /tmp/model.patch")
+            if apply.returncode != 0:
+                raise RuntimeError(f"Failed to apply model patch: {apply.stderr}")
 
         await sandbox.filesystem.write_text.aio(test_spec.eval_script, "/root/eval.sh")
         result = await run_command(
@@ -265,6 +284,16 @@ async def grade(
         )
     finally:
         await sandbox.terminate.aio()
+
+    if result.returncode == MODAL_TIMEOUT_RETURNCODE:
+        return ScoreResponse(
+            score=0.0,
+            reasoning=(
+                f"tests timed out after {GRADER_TIMEOUT_SECONDS} seconds; "
+                "scored as unresolved"
+            ),
+            artifacts={"resolved": False, "tests_timed_out": True},
+        )
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as test_log:
         test_log.write(result.stdout)
