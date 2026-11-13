@@ -59,11 +59,3 @@ then run training. The benchmark READMEs end with How it works.
 The [custom harness overview](https://docs.appliedcompute.com/platform/custom-harnesses)
 describes the Harness API and the connector. For the grading endpoints, see
 [`byoh-smoke-example/harness_server.py`](byoh-smoke-example/harness_server.py).
-
-## Other examples
-
-These do not use a self-hosted harness.
-
-- [dapo-math-check](dapo-math-check/): math-answer checking with tools, eval, and training.
-- [sales-email-opsd](sales-email-opsd/): teach a sales email agent a style rule with OPSD hints.
-- [data-pipelines](data-pipelines/): the patterns in the [AC2 pipelines guide](https://docs.appliedcompute.com/platform/data/pipelines).
