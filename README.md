@@ -36,7 +36,6 @@ job.
 | [swebench-opencode](swebench-opencode/) | SWE-bench Verified | A coding agent (OpenCode) |
 | [tau2bench](tau2bench/) | tau2-bench (airline, retail, telecom) | A customer-service agent |
 | [terminal-bench-harbor](terminal-bench-harbor/) | Terminal-Bench | A terminal agent run through Harbor on Modal (eval only) |
-| [hotpotqa-search-agent](hotpotqa-search-agent/) | HotpotQA | A search agent built on the OpenAI Agents SDK |
 | [geo3k-vlm](geo3k-vlm/) | Geometry3K | Training a vision-language model |
 
 ## Getting started
