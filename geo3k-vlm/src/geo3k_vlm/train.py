@@ -17,6 +17,7 @@ def config(steps: int) -> TrainingConfig:
         ac2_train_dataset="geo3k-train",
         custom_harness=TrainingCustomHarnessConfig(),
         max_response_len=8192,
+        extra_train_args={"max_tokens_per_gpu": 8192},
         eval_mode="off",
         name="geo3k-vlm",
     )

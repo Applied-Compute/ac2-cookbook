@@ -73,7 +73,8 @@ The `-VL` suffix enables image training. Pass `--steps` for a shorter or longer
 run.
 
 `max_response_len=8192` caps each answer; the harness reports a rollout that
-reaches the cap as `truncated`.
+reaches the cap as `truncated`. The config also caps tokens per GPU so
+the batch fits on an 80 GB GPU.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
 for more on image inputs.
