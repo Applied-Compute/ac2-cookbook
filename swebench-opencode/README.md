@@ -11,8 +11,9 @@ tests. OpenCode, the sandboxes, and the grading all run in your infrastructure.
 AC2 connects OpenCode to the model selected for the job and records the trace
 and the score.
 
-The example works for evals against an API model and for reinforcement
-learning with Qwen3-4B.
+The example has been run as an eval against an API model and as a one-step
+Qwen3-4B training smoke test. The smoke test exercises the training path; it
+is too small to show learning.
 
 ## What this example teaches
 
