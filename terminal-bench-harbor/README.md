@@ -43,13 +43,15 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
   Harbor dataset settings, creates an ID, starts a job, and returns the ID to
   AC2. It uses `Idempotency-Key` to return the same ID if AC2 retries the
   request.
-- `/get_status` translates Harbor job state into the BYOH status contract.
+- `/get_status` translates Harbor job state into the BYOH status contract and
+  passes on Harbor's error message for a failed trial.
 - `/collect_outputs` caches and returns Harbor's job IDs, verifier rewards, and
-  error metadata.
+  error metadata. It returns `null` for a trial that produced no reward.
 - `/submit_grading`, `/get_grading_status`, and `/collect_score` are the grading
   half of the contract. Harbor has already run the task's tests by the time the
   rollout finishes, so grading completes at once and `/collect_score` returns
-  the verifier reward. A trial that produced no reward scores 0.
+  the verifier reward. A trial that produced no reward fails grading instead of
+  being scored.
 
 The server gives OpenCode the rollout-scoped `ac_api_url` and `ac_api_key` from
 `/submit`. OpenCode therefore uses the model selected by AC2, and AC2 records
@@ -61,7 +63,7 @@ requests to these private HTTP endpoints.
 
 ## How a rollout moves through the example
 
-1. `eval.py` or `train.py` starts an AC2 job over the Terminal-Bench tasks.
+1. `eval.py` starts an AC2 eval over Terminal-Bench tasks.
 2. The AC2 job sends `/submit` through the Harness Gateway and Connector.
 3. `harness_server.py` starts a Harbor job in Modal for the one Terminal-Bench
    task named in the request.
@@ -81,8 +83,7 @@ AC2 job.
 | --- | --- |
 | `harness_server.py` | Your Harness API and Harbor job coordinator |
 | `src/terminal_bench_harbor/models.py` | Harbor task settings and JSON output contract |
-| `src/terminal_bench_harbor/eval.py` | Eval over the whole dataset through the self-hosted lifecycle |
-| `src/terminal_bench_harbor/train.py` | One-step connector-backed GRPO training configuration |
+| `src/terminal_bench_harbor/eval.py` | Eval configuration that selects the self-hosted lifecycle |
 | `upload_dataset.py` | Downloads the tasks through Harbor and creates one AC2 task per Terminal-Bench task |
 
 ## Adapt it to your harness
@@ -117,7 +118,7 @@ uv run --extra harness python upload_dataset.py
 
 `upload_dataset.py` uploads all 89 tasks to the `terminal-bench` dataset. Each
 AC2 task carries the task instruction as its input and the Harbor dataset,
-pinned version, and task name as `env_params`.
+the dataset version's content hash, and task name as `env_params`.
 
 Modal credentials remain on your machine. Store the model provider key
 in the project:
@@ -195,9 +196,11 @@ In a third terminal without the connector environment variables:
 uv run python -m terminal_bench_harbor.eval
 ```
 
-The eval runs every task in the dataset with `gpt-5.6-luna`, four at a time.
-Each task starts its own Modal sandbox and may run up to the agent timeout
-Terminal-Bench sets for it, which ranges from 10 minutes to over 3 hours.
+The eval runs the first four tasks in the dataset with `gpt-5.6-luna`, all at
+once. Raise `num_tasks` in `eval.py` to run more. Each task starts its own
+Modal sandbox and may run up to the agent timeout Terminal-Bench sets for it,
+which ranges from 10 minutes to over 3 hours. AC2 waits two hours for a rollout
+and then records it as an error.
 
 If connector credentials were previously saved globally, remove them first:
 
@@ -206,18 +209,3 @@ ac2 config unset service_client_id
 ac2 config unset service_client_secret
 ac2 login
 ```
-
-## Run training
-
-With the Harness API and Harness Connector still running, start a training
-smoke test:
-
-```bash
-uv run python -m terminal_bench_harbor.train
-```
-
-The default configuration trains `Qwen/Qwen3-4B` for one GRPO step: one
-Terminal-Bench task, two Harbor rollouts. Training calls the model being
-trained, so it needs no OpenAI key. Pass `--steps` to run more steps. `train.py`
-sets `rollout_sample_timeout` to 30 minutes; raise it to train on the longer
-tasks.

@@ -4,7 +4,7 @@ import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
-from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
+from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
 
 async def main() -> None:
@@ -17,8 +17,9 @@ async def main() -> None:
     client = Client(project=args.project)
     run = await client.eval.run(
         EvalConfig(
-            dataset=args.dataset,
+            dataset=DatasetSource(dataset=args.dataset, num_tasks=4),
             max_parallel=4,
+            max_retries=0,
             name="terminal-bench-harbor",
             custom_harness=CustomHarnessConfig(
                 model=ModelConfiguration(
