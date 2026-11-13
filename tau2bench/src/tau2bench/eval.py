@@ -18,7 +18,6 @@ async def main() -> None:
     run = await client.eval.run(
         EvalConfig(
             dataset=args.dataset,
-            max_parallel=8,
             name="tau2bench",
             custom_harness=CustomHarnessConfig(
                 model=ModelConfiguration(model=args.model),

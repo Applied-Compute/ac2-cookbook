@@ -23,7 +23,6 @@ def main() -> None:
             samples_per_problem=4,
             problem_batch_size=2,
             global_sampling_concurrency=8,
-            max_response_len=8192,
             ac2_train_dataset=args.dataset,
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
