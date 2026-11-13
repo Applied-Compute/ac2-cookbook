@@ -2,39 +2,33 @@ from __future__ import annotations
 
 import argparse
 
-from ac2.sdk import Client, TrainingConfig
-
-from .agent import DOMAIN_ENVIRONMENT, Tau2Agent
-from .dataloader import DOMAINS, Domain
-from .graders import Tau2BenchGrader
-from .user import Tau2BenchDefaultUser
-
-
-def train_config(domain: Domain = "airline") -> TrainingConfig:
-    return TrainingConfig(
-        model="Qwen/Qwen3-4B",
-        n_training_replicas=4,
-        n_inference_replicas=4,
-        samples_per_problem=4,
-        problem_batch_size=8,
-        num_train_steps=20,
-        ac2_agent=Tau2Agent(domain=domain),
-        ac2_env=DOMAIN_ENVIRONMENT[domain](),
-        ac2_grader=Tau2BenchGrader(),
-        ac2_user=Tau2BenchDefaultUser(),
-        ac2_train_dataset=f"tau2bench-{domain}-train",
-        ac2_eval_dataset=f"tau2bench-{domain}-test",
-    )
-
-
-CONFIG = train_config()
+from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--domain", choices=DOMAINS, default="airline")
+    parser.add_argument("--project", default="tau2bench")
+    parser.add_argument("--dataset", default="tau2bench-airline-train")
+    parser.add_argument("--model", default="Qwen/Qwen3-4B")
+    parser.add_argument("--steps", type=int, default=1)
     args = parser.parse_args()
-    Client(project="tau2bench").train.run(train_config(args.domain))
+
+    client = Client(project=args.project)
+    run = client.train.run(
+        TrainingConfig(
+            model=args.model,
+            n_inference_replicas=1,
+            num_train_steps=args.steps,
+            samples_per_problem=4,
+            problem_batch_size=2,
+            global_sampling_concurrency=8,
+            ac2_train_dataset=args.dataset,
+            custom_harness=TrainingCustomHarnessConfig(),
+            eval_mode="off",
+            name="tau2bench",
+        )
+    )
+    print(run.train_id)
 
 
 if __name__ == "__main__":

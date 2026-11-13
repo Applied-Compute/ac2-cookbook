@@ -3,34 +3,28 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from ac2.sdk import Client, EvalConfig
-
-from .agent import DOMAIN_ENVIRONMENT, Tau2Agent
-from .dataloader import DOMAINS, Domain
-from .graders import Tau2BenchGrader
-from .user import Tau2BenchDefaultUser
-
-
-def eval_config(domain: Domain = "airline") -> EvalConfig:
-    return EvalConfig(
-        agent=Tau2Agent(domain=domain),
-        env=DOMAIN_ENVIRONMENT[domain](),
-        grader=Tau2BenchGrader(),
-        user=Tau2BenchDefaultUser(),
-        dataset=f"tau2bench-{domain}-test",
-        num_samples=1,
-        max_parallel=8,
-    )
-
-
-CONFIG = eval_config()
+from ac2.runtime import ModelConfiguration
+from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--domain", choices=DOMAINS, default="airline")
+    parser.add_argument("--project", default="tau2bench")
+    parser.add_argument("--dataset", default="tau2bench-airline-test")
+    parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
-    await Client(project="tau2bench").eval.run(eval_config(args.domain))
+
+    client = Client(project=args.project)
+    run = await client.eval.run(
+        EvalConfig(
+            dataset=args.dataset,
+            name="tau2bench",
+            custom_harness=CustomHarnessConfig(
+                model=ModelConfiguration(model=args.model),
+            ),
+        )
+    )
+    print(run.eval_id)
 
 
 if __name__ == "__main__":

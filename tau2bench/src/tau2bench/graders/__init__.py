@@ -1,3 +1,3 @@
-from tau2bench.graders.main import RewardType, Tau2BenchGrader
+from tau2bench.graders.main import RewardType, grade
 
-__all__ = ["RewardType", "Tau2BenchGrader"]
+__all__ = ["RewardType", "grade"]

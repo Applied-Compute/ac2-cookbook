@@ -32,14 +32,13 @@ from urllib.request import urlopen
 
 from ac2.runtime import Message, Task
 
-DOMAINS = ("airline", "retail", "telecom")
+DOMAINS = ("airline", "retail")
 SPLITS = ("train", "test", "base")
-Domain = Literal["airline", "retail", "telecom"]
 Split = Literal["train", "test", "base"]
 
-TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/main/data/tau2/domains"
-POLICY_FILE = {"airline": "policy.md", "retail": "policy.md", "telecom": "main_policy.md"}
-DB_FILE = {"airline": "db.json", "retail": "db.json", "telecom": "db.toml"}
+TAU2_RAW_BASE = "https://raw.githubusercontent.com/sierra-research/tau2-bench/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains"
+POLICY_FILE = "policy.md"
+DB_FILE = "db.json"
 SPLIT_TASKS_FILE = "split_tasks.json"
 CACHE_DIR = Path(__file__).parent / "cache"
 
@@ -47,21 +46,19 @@ CACHE_DIR = Path(__file__).parent / "cache"
 def _fetch(url: str, dest: Path) -> bytes:
     if not dest.exists():
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with urlopen(url) as resp:
+        with urlopen(url, timeout=60) as resp:
             dest.write_bytes(resp.read())
     return dest.read_bytes()
 
 
 def load_tau2_policy(domain: str) -> str:
-    fname = POLICY_FILE[domain]
-    return _fetch(f"{TAU2_RAW_BASE}/{domain}/{fname}", CACHE_DIR / domain / fname).decode()
+    return _fetch(f"{TAU2_RAW_BASE}/{domain}/{POLICY_FILE}", CACHE_DIR / domain / POLICY_FILE).decode()
 
 
 def load_tau2_db(domain: str) -> Path:
     """Lazily fetch the domain DB into the cache and return its path."""
-    fname = DB_FILE[domain]
-    dest = CACHE_DIR / domain / fname
-    _fetch(f"{TAU2_RAW_BASE}/{domain}/{fname}", dest)
+    dest = CACHE_DIR / domain / DB_FILE
+    _fetch(f"{TAU2_RAW_BASE}/{domain}/{DB_FILE}", dest)
     return dest
 
 
@@ -143,7 +140,6 @@ def load_tau2_tasks(
         initial_state = t.get("initial_state")
         grader_params: dict[str, Any] = {
             "domain": domain,
-            "user_instructions": _format_user_instructions(t.get("user_scenario") or {}),
             "expected_actions": ec.get("actions") or [],
             "communicate_info": ec.get("communicate_info") or [],
             "env_assertions": ec.get("env_assertions") or [],
@@ -152,7 +148,10 @@ def load_tau2_tasks(
         }
         if ec.get("reward_basis"):
             grader_params["reward_basis"] = ec["reward_basis"]
-        env_params: dict[str, Any] = {}
+        env_params: dict[str, Any] = {
+            "domain": domain,
+            "user_instructions": _format_user_instructions(t.get("user_scenario") or {}),
+        }
         if initial_state:
             env_params["initial_state"] = initial_state
 
