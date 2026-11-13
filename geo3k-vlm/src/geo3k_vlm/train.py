@@ -13,6 +13,7 @@ def config(steps: int) -> TrainingConfig:
         num_train_steps=steps,
         samples_per_problem=4,
         problem_batch_size=8,
+        global_sampling_concurrency=32,
         ac2_train_dataset="geo3k-train",
         custom_harness=TrainingCustomHarnessConfig(),
         max_response_len=8192,
