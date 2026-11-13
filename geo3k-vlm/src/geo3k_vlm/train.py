@@ -8,7 +8,6 @@ from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 def config(steps: int) -> TrainingConfig:
     return TrainingConfig(
         model="Qwen/Qwen3.5-9B-VL",
-        n_training_replicas=1,
         n_inference_replicas=1,
         num_train_steps=steps,
         samples_per_problem=4,
