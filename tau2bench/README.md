@@ -127,7 +127,7 @@ uv run python -m tau2bench.train
 The default is one training step of `Qwen/Qwen3-4B` on two airline tasks with
 four conversations each. Training calls the model being trained, so it needs no
 project OpenAI key; the harness still uses yours for the simulated customer.
-Pass `--steps` for more steps.
+Pass `--steps` for more steps. The run saves a checkpoint when it finishes.
 
 ## Source and license
 
