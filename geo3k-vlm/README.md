@@ -6,8 +6,7 @@ Each task is a geometry question with a diagram. The Harness API in
 [`harness_server.py`](harness_server.py) sends the question and image to the
 model endpoint AC2 supplies with `/submit`, then grades the LaTeX answer in
 the response itself with `math-verify` and returns the score through
-`/submit_grading`, `/get_grading_status` and `/collect_score`. No agent,
-environment or grader code runs in the AC2 job.
+`/submit_grading`, `/get_grading_status` and `/collect_score`.
 
 ## Set up
 
@@ -26,7 +25,7 @@ The uploader reads a pinned revision of
 and creates `geo3k-train` (2,100 tasks) and `geo3k-validation` (300 tasks).
 Questions and PNG diagrams become message content parts; expected answers go
 in `grader_params`, which AC2 sends to the harness only for grading. The test
-split is left unused.
+split is left unused. The upload is about 60 MB.
 
 The eval's model, `gpt-5.6-luna`, is called from the eval job, which reads the
 OpenAI key from that AC2 secret. Training needs no OpenAI key.
@@ -71,7 +70,7 @@ uv run python -m geo3k_vlm.train
 It trains `Qwen/Qwen3.5-9B-VL` for one step of 8 tasks with 4 rollouts each.
 The `-VL` suffix enables image training. Pass `--steps` for a longer run.
 
-`max_response_len=8192` caps each answer; the harness reports a rollout that
+`max_response_len=8192` caps each response; the harness reports a rollout that
 reaches the cap as `truncated` and scores it 0.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
