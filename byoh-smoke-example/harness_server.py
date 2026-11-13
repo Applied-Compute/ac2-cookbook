@@ -13,25 +13,19 @@ from ac2.harness.types import (
     StatusResponse,
     SubmitGradingRequest,
     SubmitPayload,
+    SubmitResponse,
 )
 from ac2.runtime import Message
 from fastapi import FastAPI, Header, HTTPException
 from openai import AsyncOpenAI
-from pydantic import BaseModel
-
-from byoh_smoke_example.models import HarnessOutput
 
 app = FastAPI()
-rollouts: dict[str, asyncio.Task[HarnessOutput]] = {}
+rollouts: dict[str, asyncio.Task[str]] = {}
 rollout_ids_by_key: dict[str, str] = {}
 scores: dict[str, ScoreResponse] = {}
 
 
-class SubmitResponse(BaseModel):
-    rollout_id: str
-
-
-async def run_rollout(request: SubmitPayload) -> HarnessOutput:
+async def run_rollout(request: SubmitPayload) -> str:
     messages = [Message.model_validate(item) for item in request.task.input]
     async with AsyncOpenAI(
         api_key=request.ac_api_key, base_url=request.ac_api_url
@@ -40,7 +34,7 @@ async def run_rollout(request: SubmitPayload) -> HarnessOutput:
             model="policy",
             messages=[{"role": m.role, "content": m.content} for m in messages],
         )
-    return HarnessOutput(answer=completion.choices[0].message.content or "")
+    return completion.choices[0].message.content or ""
 
 
 @app.post("/submit", response_model=SubmitResponse)
@@ -67,13 +61,12 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
     return StatusResponse(status=RolloutStatus.completed)
 
 
-@app.post("/collect_outputs", response_model=HarnessOutput | None)
-async def collect_outputs(request: RolloutRequest) -> HarnessOutput | None:
+@app.post("/collect_outputs")
+async def collect_outputs(request: RolloutRequest) -> dict[str, str] | None:
     rollout = _rollout(request.rollout_id)
-    try:
-        return await rollout
-    except Exception:
+    if rollout.exception() is not None:
         return None
+    return {"answer": rollout.result()}
 
 
 @app.post("/submit_grading")
@@ -82,7 +75,7 @@ async def submit_grading(request: SubmitGradingRequest) -> None:
     if rollout.exception() is not None:
         return
     expected_answer = str((request.task.grader_params or {})["expected_answer"])
-    matched = expected_answer.casefold() in rollout.result().answer.casefold()
+    matched = expected_answer.casefold() in rollout.result().casefold()
     scores[request.rollout_id] = ScoreResponse(
         score=1 if matched else 0,
         reasoning=f"Expected the answer to contain {expected_answer!r}.",
@@ -93,9 +86,11 @@ async def submit_grading(request: SubmitGradingRequest) -> None:
 async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
     if request.rollout_id in scores:
         return GradingStatusResponse(status=GradingStatus.completed)
+    rollout = _rollout(request.rollout_id)
+    if not rollout.done() or rollout.exception() is None:
+        raise HTTPException(status_code=404, detail="Not graded")
     return GradingStatusResponse(
-        status=GradingStatus.failed,
-        error_message=_error_message(_rollout(request.rollout_id)),
+        status=GradingStatus.failed, error_message=_error_message(rollout)
     )
 
 
@@ -106,12 +101,12 @@ async def collect_score(request: RolloutRequest) -> ScoreResponse:
     return scores[request.rollout_id]
 
 
-def _error_message(rollout: asyncio.Task[HarnessOutput]) -> str:
+def _error_message(rollout: asyncio.Task[str]) -> str:
     exc = rollout.exception()
     return f"{type(exc).__name__}: {exc}"[:2000]
 
 
-def _rollout(rollout_id: str) -> asyncio.Task[HarnessOutput]:
+def _rollout(rollout_id: str) -> asyncio.Task[str]:
     rollout = rollouts.get(rollout_id)
     if rollout is None:
         raise HTTPException(status_code=404, detail="Unknown rollout")
