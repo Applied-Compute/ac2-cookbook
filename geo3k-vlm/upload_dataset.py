@@ -53,7 +53,8 @@ def main() -> None:
         except DatasetNotFoundError:
             client.datasets.create(name)
         client.datasets.add_tasks(name, tasks=tasks)
-        print(f"Uploaded {len(tasks)} tasks to {args.project}/{name}")
+        unique_ids = {task.id for task in tasks}
+        print(f"Uploaded {len(unique_ids)} tasks to {args.project}/{name}")
 
 
 if __name__ == "__main__":

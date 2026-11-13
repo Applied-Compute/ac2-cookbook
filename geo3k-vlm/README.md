@@ -68,13 +68,13 @@ With the Harness API and connector still running:
 uv run python -m geo3k_vlm.train
 ```
 
-It trains `Qwen/Qwen3.5-9B-VL` for 20 steps of 8 tasks with 4 rollouts each.
-The `-VL` suffix enables image training. Pass `--steps` for a shorter or longer
-run.
+It trains `Qwen/Qwen3.5-9B-VL` for one step of 8 tasks with 4 rollouts each.
+The `-VL` suffix enables image training. Pass `--steps` for a longer run.
 
 `max_response_len=8192` caps each answer; the harness reports a rollout that
-reaches the cap as `truncated`. The config also caps tokens per GPU so
-the batch fits on an 80 GB GPU.
+reaches the cap as `truncated` and scores it 0. The config also sets
+`max_tokens_per_gpu=8192`, which splits each training step into smaller
+micro-batches so it fits in GPU memory.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
 for more on image inputs.

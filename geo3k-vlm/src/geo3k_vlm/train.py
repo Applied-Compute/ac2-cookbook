@@ -26,7 +26,7 @@ def config(steps: int) -> TrainingConfig:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="geo3k-vlm")
-    parser.add_argument("--steps", type=int, default=20)
+    parser.add_argument("--steps", type=int, default=1)
     args = parser.parse_args()
 
     client = Client(project=args.project)

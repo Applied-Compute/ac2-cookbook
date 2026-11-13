@@ -101,8 +101,14 @@ async def submit_grading(request: SubmitGradingRequest) -> None:
     rollout = _rollout(request.rollout_id)
     if rollout.exception() is not None:
         return
+    result = rollout.result()
+    if result.finish_reason == "length":
+        scores[request.rollout_id] = ScoreResponse(
+            score=0.0, reasoning="Response reached the length cap."
+        )
+        return
     expected = str((request.task.grader_params or {})["answer"])
-    score = answer_score(rollout.result().answer, expected)
+    score = answer_score(result.answer, expected)
     scores[request.rollout_id] = ScoreResponse(
         score=score,
         reasoning="Final answer matches." if score else "Final answer does not match.",
