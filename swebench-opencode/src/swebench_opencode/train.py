@@ -30,7 +30,7 @@ def main() -> None:
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
             max_response_len=8_192,
-            rollout_sample_timeout=3_600,
+            rollout_sample_timeout=9_000,
             name="swebench-opencode-smoke",
         )
     )

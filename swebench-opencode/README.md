@@ -41,6 +41,8 @@ operate. Its FastAPI routes are the complete AC2 integration contract:
 - `/get_status` translates the CLI process state into `running`, `completed`,
   or `failed` with an error message. A rollout that left no patch because
   OpenCode reported an error or exited non-zero is `failed`, not a score of 0.
+  A rollout that exits non-zero but leaves a patch is reported `failed` and is
+  still graded on that patch.
 - `/collect_outputs` returns the sandbox ID, the patch size, the exit code, and
   the tail of OpenCode's output, or `null` for a rollout that raised.
 - `/submit_grading` starts grading the rollout. A patch that fails
