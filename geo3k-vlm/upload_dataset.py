@@ -1,25 +1,59 @@
+from __future__ import annotations
+
 import argparse
+import base64
+import hashlib
+import io
+import json
 
-from ac2.sdk import DatasetNotFoundError
+from ac2.runtime import Message, Task
+from ac2.sdk import Client, DatasetNotFoundError
 from datasets import load_dataset
-from geo3k_vlm.settings import client
-from geo3k_vlm.tasks import SOURCE, SOURCE_REVISION, TRAIN_DATASET, EVAL_DATASET, row_to_task
+
+SOURCE = "hiyouga/geometry3k"
+SOURCE_REVISION = "fd21e533e1e50d0662a2bf7b223e60511bd5f8b7"
 
 
-def main(revision: str):
-    data = load_dataset(SOURCE, revision=revision)
-    api = client()
-    for split, name in (("train", TRAIN_DATASET), ("validation", EVAL_DATASET)):
+def row_to_task(row: dict) -> Task:
+    content = [{"type": "text", "text": row["problem"].replace("<image>", "").strip()}]
+    for image in row["images"]:
+        buffer = io.BytesIO()
+        image.convert("RGB").save(buffer, format="PNG")
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{encoded}"},
+            }
+        )
+    answer = str(row["answer"])
+    task_id = hashlib.sha256(
+        json.dumps([content, answer], sort_keys=True).encode()
+    ).hexdigest()[:24]
+    return Task(
+        id=task_id,
+        input=[Message(role="user", content=content)],
+        grader_params={"answer": answer},
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", default="geo3k-vlm")
+    args = parser.parse_args()
+
+    client = Client(project=args.project)
+    data = load_dataset(SOURCE, revision=SOURCE_REVISION)
+    for split, name in (("train", "geo3k-train"), ("validation", "geo3k-validation")):
         tasks = [row_to_task(row) for row in data[split]]
         try:
-            api.datasets.get(name)
+            client.datasets.get(name)
         except DatasetNotFoundError:
-            api.datasets.create(name)
-        api.datasets.add_tasks(name, tasks=tasks)
-        print(f"{name}: {len(tasks)} tasks from {SOURCE}@{revision}/{split}")
+            client.datasets.create(name)
+        client.datasets.add_tasks(name, tasks=tasks)
+        unique_ids = {task.id for task in tasks}
+        print(f"Uploaded {len(unique_ids)} tasks to {args.project}/{name}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--revision", default=SOURCE_REVISION, help="Hugging Face dataset commit SHA")
-    main(parser.parse_args().revision)
+    main()
