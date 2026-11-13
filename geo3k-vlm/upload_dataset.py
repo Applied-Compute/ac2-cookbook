@@ -26,8 +26,6 @@ def row_to_task(row: dict) -> Task:
                 "image_url": {"url": f"data:image/png;base64,{encoded}"},
             }
         )
-    if len(content) == 1:
-        raise ValueError("Geometry3K tasks require an image")
     answer = str(row["answer"])
     task_id = hashlib.sha256(
         json.dumps([content, answer], sort_keys=True).encode()
