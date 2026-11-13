@@ -20,10 +20,7 @@ async def main() -> None:
             dataset=args.dataset,
             name="terminal-bench-harbor",
             custom_harness=CustomHarnessConfig(
-                model=ModelConfiguration(
-                    model=args.model,
-                    kwargs={"max_output_tokens": 8_192},
-                ),
+                model=ModelConfiguration(model=args.model),
             ),
         )
     )

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import math
 import tempfile
 import uuid
@@ -23,7 +22,6 @@ from ac2.harness.types import (
     SubmitResponse,
 )
 from fastapi import FastAPI, Header, HTTPException
-from harbor.agents.installed.acp import AcpAgent
 from harbor.job import Job
 from harbor.models.environment_type import EnvironmentType
 from harbor.models.job.config import DatasetConfig, JobConfig
@@ -31,16 +29,6 @@ from harbor.models.job.result import JobResult
 from harbor.models.trial.config import AgentConfig, EnvironmentConfig
 from harbor.trial.errors import AgentTimeoutError
 from pydantic import BaseModel, ConfigDict, ValidationError
-
-ACP_AGENT = "opencode@1.18.10"
-
-
-class PinnedAcpAgent(AcpAgent):
-    def _build_dependencies_command(self, kind: str) -> str:
-        command = super()._build_dependencies_command(kind)
-        unpinned = "pip install agent-client-protocol\n"
-        assert unpinned in command
-        return command.replace(unpinned, "pip install 'agent-client-protocol<1'\n")
 
 
 class HarborDataset(BaseModel):
@@ -205,7 +193,6 @@ async def _run_harbor(
     opencode_config = {
         "$schema": "https://opencode.ai/config.json",
         "agent": {"title": {"disable": True}},
-        "model": "ac2/model",
         "provider": {
             "ac2": {
                 "npm": "@ai-sdk/openai-compatible",
@@ -226,12 +213,10 @@ async def _run_harbor(
             quiet=True,
             agents=[
                 AgentConfig(
-                    import_path=f"{__name__}:PinnedAcpAgent",
-                    kwargs={"registry_spec": ACP_AGENT},
-                    env={
-                        "AC2_ROLLOUT_API_KEY": request.ac_api_key,
-                        "OPENCODE_CONFIG_CONTENT": json.dumps(opencode_config),
-                    },
+                    name="opencode",
+                    model_name="ac2/model",
+                    kwargs={"version": "1.18.10", "opencode_config": opencode_config},
+                    env={"AC2_ROLLOUT_API_KEY": request.ac_api_key},
                 )
             ],
             environment=EnvironmentConfig(type=EnvironmentType.MODAL),
