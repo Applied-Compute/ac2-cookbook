@@ -1,70 +1,69 @@
 # AC2 Cookbook
 
-Starter projects for building, evaluating, deploying, and training agents on
-[AC2](https://docs.appliedcompute.com/).
+Runnable examples for evaluating and training agents on
+[AC2](https://docs.appliedcompute.com/) with your own harness.
 
-Each folder is a complete AC2 project. Runtime components are discovered from
-its `src/` package and launched by class name from normal Python config modules.
-Start with the project that matches the pattern you want to learn.
+Each example in the table below is a
+[self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted):
+the agent and its tools run on your infrastructure, while AC2 serves the model
+and runs the eval or training job.
 
-## Getting Started
+## Getting started
 
-Install AC2 first ([docs](https://docs.appliedcompute.com)): have an agent follow [agents.md](https://platform.appliedcompute.com/agents.md), or run `curl -fsSL https://api.appliedcompute.com/install.sh | sh`.
+Install AC2 ([docs](https://docs.appliedcompute.com)): have an agent follow
+[agents.md](https://platform.appliedcompute.com/agents.md), or run
+`curl -fsSL https://api.appliedcompute.com/install.sh | sh`. The installer logs
+you in and gives `uv` access to the AC2 package index, which every example's
+`uv sync` installs `ac2` from. If `uv sync` cannot authenticate, run
+`ac2 login` again.
 
-1. Enter a project, register it, and sync deps:
-   ```bash
-   cd dapo-math-check
-   ac2 project init
-   uv sync
-   ```
-2. Follow that project's README for dataset setup and runnable eval, train, and
-   deployment modules.
+You also need:
 
+- Harness Connector credentials. An organization admin creates them once with
+  `ac2 harness credentials create`.
+- An OpenAI API key. The baseline evals call `gpt-5.6-luna`.
+- A [Modal](https://modal.com) account for `swebench-opencode` and
+  `terminal-bench-harbor`, which run their sandboxes there.
 
-## Core examples
+Start with [byoh-smoke-example](byoh-smoke-example/). It checks your
+credentials, network, and connector with three questions before you run a
+benchmark.
 
-| Project                                     | Shows                                                                                  | Use It For                       |
-| ------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------- |
-| [rock-paper-scissors](rock-paper-scissors/) | Local sessions, tool use, grading, deployment                                          | A small end-to-end AC2 agent     |
-| [dapo-math-check](dapo-math-check/)         | Datasets, custom user policy, stateful tools, eval, training                           | A focused train/eval starter     |
-| [tau2bench](tau2bench/)                     | Simulated customer user, domain environments, multi-part grader, remote eval, training | A larger benchmark-style starter |
+## Examples
 
-- [geo3k-vlm](geo3k-vlm/): train a catalog VLM on Geometry3K image questions.
-- [sales-email-opsd](sales-email-opsd/): teach a sales email agent a style rule with online OPSD hints.
+Apart from the smoke example, each one uses a public benchmark. Every README
+follows the same steps: set up the project, start your services, run the eval,
+then run training. The benchmark READMEs end with How it works.
+`terminal-bench-harbor` is eval-only.
 
-## Bring your own harness examples
+| Directory | Benchmark | Shows |
+| --- | --- | --- |
+| [byoh-smoke-example](byoh-smoke-example/) | Three factual questions | The smallest harness: one model call per rollout |
+| [swebench-opencode](swebench-opencode/) | SWE-bench Verified | A coding agent (OpenCode) |
+| [tau2bench](tau2bench/) | tau2-bench (airline, retail) | A customer-service agent |
+| [terminal-bench-harbor](terminal-bench-harbor/) | Terminal-Bench | A terminal agent run through Harbor on Modal (eval only) |
+| [geo3k-vlm](geo3k-vlm/) | Geometry3K | Training a vision-language model |
 
-Bring your own harness (BYOH) connects an existing agent runtime to AC2 for
-evals and training. A harness accepts a task, prepares its environment, runs an
-agent and its tools, and returns the result. One attempt at one task is a
-rollout.
+## How a self-hosted harness connects to AC2
 
-The examples cover both BYOH deployment models:
+- **Harness API**: an HTTP server you run. AC2 calls it to start a rollout (one
+  attempt at one task), check its status, and collect its outputs.
+- **Harness Connector**: `ac2 harness connect`, run next to your server. It makes
+  an outbound connection to AC2 and forwards requests to your Harness API, so the
+  server stays private.
+- **Model endpoint**: each rollout request carries a URL and key. Your agent
+  sends its model calls there; AC2 serves the model selected for the job (in
+  training, the model being trained) and records the trace.
+- **Grading**: your harness scores each rollout and returns the score to AC2.
 
-- **AC2-managed lifecycle:** you write a Python orchestrator that AC2 runs
-  inside the job. Start here when your harness is a CLI or library.
-- **Self-hosted lifecycle:** you run a three-endpoint Harness API in your own
-  network. An unmodified AC2 Harness Connector forwards lifecycle requests to
-  it over private HTTP.
+The [custom harness overview](https://docs.appliedcompute.com/platform/custom-harnesses)
+describes the Harness API and the connector. For the grading endpoints, see
+[`byoh-smoke-example/harness_server.py`](byoh-smoke-example/harness_server.py).
 
-These examples use one user turn per rollout and run grading in AC2. For a
-self-hosted rollout, the initial `/submit` request does not contain a rollout
-ID. Your Harness API creates the ID, returns it to AC2, and accepts the same ID
-in `/get_status` and `/collect_outputs`.
+## Other examples
 
-Read the [BYOH overview](https://docs.appliedcompute.com/platform/custom-harnesses)
-for the vocabulary, architecture, and selection guide before running an
-example.
+These do not use a self-hosted harness.
 
-| Project                                                               | Lifecycle   | Shows                                                        |
-| --------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
-| [swebench-opencode](swebench-opencode/)                               | AC2-managed | A CLI harness, sandbox handoff, and AC2-side grading          |
-| [byoh-smoke-example](byoh-smoke-example/)                             | Self-hosted | One model call per rollout, as a container                    |
-| [byoh-agents-web-search-api](byoh-agents-web-search-api/)             | Self-hosted | A stateful Harness API with AC2-side grading                  |
-| [byoh-modal-coding-api](byoh-modal-coding-api/)                       | Self-hosted | External execution with customer-side grading                |
-
-
-## Helpful Links
-
-- [AC2 docs](https://docs.appliedcompute.com/)
-- [AC2 platform](https://platform.appliedcompute.com/)
+- [dapo-math-check](dapo-math-check/): math-answer checking with tools, eval, and training.
+- [sales-email-opsd](sales-email-opsd/): teach a sales email agent a style rule with OPSD hints.
+- [data-pipelines](data-pipelines/): the patterns in the [AC2 pipelines guide](https://docs.appliedcompute.com/platform/data/pipelines).

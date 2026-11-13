@@ -5,28 +5,27 @@ import uuid
 from typing import Annotated
 
 from ac2.harness.types import (
+    GradingStatus,
+    GradingStatusResponse,
     RolloutRequest,
     RolloutStatus,
+    ScoreResponse,
     StatusResponse,
+    SubmitGradingRequest,
     SubmitPayload,
+    SubmitResponse,
 )
 from ac2.runtime import Message
 from fastapi import FastAPI, Header, HTTPException
 from openai import AsyncOpenAI
-from pydantic import BaseModel
-
-from byoh_smoke_example.models import HarnessOutput
 
 app = FastAPI()
-rollouts: dict[str, asyncio.Task[HarnessOutput]] = {}
+rollouts: dict[str, asyncio.Task[str]] = {}
 rollout_ids_by_key: dict[str, str] = {}
+scores: dict[str, ScoreResponse] = {}
 
 
-class SubmitResponse(BaseModel):
-    rollout_id: str
-
-
-async def run_rollout(request: SubmitPayload) -> HarnessOutput:
+async def run_rollout(request: SubmitPayload) -> str:
     messages = [Message.model_validate(item) for item in request.task.input]
     async with AsyncOpenAI(
         api_key=request.ac_api_key, base_url=request.ac_api_url
@@ -35,7 +34,7 @@ async def run_rollout(request: SubmitPayload) -> HarnessOutput:
             model="policy",
             messages=[{"role": m.role, "content": m.content} for m in messages],
         )
-    return HarnessOutput(answer=completion.choices[0].message.content or "")
+    return completion.choices[0].message.content or ""
 
 
 @app.post("/submit", response_model=SubmitResponse)
@@ -56,20 +55,58 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
     if not rollout.done():
         return StatusResponse(status=RolloutStatus.running)
     if rollout.exception() is not None:
-        return StatusResponse(status=RolloutStatus.failed)
+        return StatusResponse(
+            status=RolloutStatus.failed, error_message=_error_message(rollout)
+        )
     return StatusResponse(status=RolloutStatus.completed)
 
 
-@app.post("/collect_outputs", response_model=HarnessOutput)
-async def collect_outputs(request: RolloutRequest) -> HarnessOutput:
+@app.post("/collect_outputs")
+async def collect_outputs(request: RolloutRequest) -> dict[str, str] | None:
     rollout = _rollout(request.rollout_id)
-    try:
-        return await rollout
-    except Exception as exc:
-        return HarnessOutput(answer="", error=f"{type(exc).__name__}: {exc}")
+    if rollout.exception() is not None:
+        return None
+    return {"answer": rollout.result()}
 
 
-def _rollout(rollout_id: str) -> asyncio.Task[HarnessOutput]:
+@app.post("/submit_grading")
+async def submit_grading(request: SubmitGradingRequest) -> None:
+    rollout = _rollout(request.rollout_id)
+    if rollout.exception() is not None:
+        return
+    expected_answer = str((request.task.grader_params or {})["expected_answer"])
+    matched = expected_answer.casefold() in rollout.result().casefold()
+    scores[request.rollout_id] = ScoreResponse(
+        score=1 if matched else 0,
+        reasoning=f"Expected the answer to contain {expected_answer!r}.",
+    )
+
+
+@app.post("/get_grading_status", response_model=GradingStatusResponse)
+async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
+    if request.rollout_id in scores:
+        return GradingStatusResponse(status=GradingStatus.completed)
+    rollout = _rollout(request.rollout_id)
+    if not rollout.done() or rollout.exception() is None:
+        raise HTTPException(status_code=404, detail="Not graded")
+    return GradingStatusResponse(
+        status=GradingStatus.failed, error_message=_error_message(rollout)
+    )
+
+
+@app.post("/collect_score", response_model=ScoreResponse)
+async def collect_score(request: RolloutRequest) -> ScoreResponse:
+    if request.rollout_id not in scores:
+        raise HTTPException(status_code=404, detail="No score")
+    return scores[request.rollout_id]
+
+
+def _error_message(rollout: asyncio.Task[str]) -> str:
+    exc = rollout.exception()
+    return f"{type(exc).__name__}: {exc}"[:2000]
+
+
+def _rollout(rollout_id: str) -> asyncio.Task[str]:
     rollout = rollouts.get(rollout_id)
     if rollout is None:
         raise HTTPException(status_code=404, detail="Unknown rollout")

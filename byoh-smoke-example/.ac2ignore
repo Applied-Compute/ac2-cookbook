@@ -10,4 +10,3 @@ build/
 *.egg-info/
 .DS_Store
 harness_server.py
-Dockerfile
