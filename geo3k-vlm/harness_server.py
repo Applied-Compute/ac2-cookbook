@@ -88,20 +88,21 @@ async def get_status(request: RolloutRequest) -> StatusResponse:
     return StatusResponse(status=RolloutStatus.completed)
 
 
-@app.post("/collect_outputs", response_model=RolloutOutput)
-async def collect_outputs(request: RolloutRequest) -> RolloutOutput:
+@app.post("/collect_outputs", response_model=RolloutOutput | None)
+async def collect_outputs(request: RolloutRequest) -> RolloutOutput | None:
     rollout = _rollout(request.rollout_id)
     if rollout.exception() is not None:
-        return RolloutOutput(answer="", finish_reason="error")
+        return None
     return rollout.result()
 
 
 @app.post("/submit_grading")
 async def submit_grading(request: SubmitGradingRequest) -> None:
     rollout = _rollout(request.rollout_id)
-    answer = "" if rollout.exception() is not None else rollout.result().answer
+    if rollout.exception() is not None:
+        return
     expected = str((request.task.grader_params or {})["answer"])
-    score = answer_score(answer, expected)
+    score = answer_score(rollout.result().answer, expected)
     scores[request.rollout_id] = ScoreResponse(
         score=score,
         reasoning="Final answer matches." if score else "Final answer does not match.",
@@ -110,6 +111,12 @@ async def submit_grading(request: SubmitGradingRequest) -> None:
 
 @app.post("/get_grading_status", response_model=GradingStatusResponse)
 async def get_grading_status(request: RolloutRequest) -> GradingStatusResponse:
+    rollout = _rollout(request.rollout_id)
+    if rollout.done() and (error := rollout.exception()) is not None:
+        return GradingStatusResponse(
+            status=GradingStatus.failed,
+            error_message=f"{type(error).__name__}: {error}"[:2000],
+        )
     if request.rollout_id not in scores:
         raise HTTPException(status_code=404, detail="Unknown grading")
     return GradingStatusResponse(status=GradingStatus.completed)

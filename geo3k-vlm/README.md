@@ -4,8 +4,8 @@ Train a vision-language model on image questions through a
 [self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted).
 Each task is a geometry question with a diagram. The Harness API in
 [`harness_server.py`](harness_server.py) sends the question and image to the
-model endpoint AC2 supplies with `/submit`, then grades the `\boxed{...}`
-answer itself with `math-verify` and returns the score through
+model endpoint AC2 supplies with `/submit`, then grades the LaTeX answer in
+the response itself with `math-verify` and returns the score through
 `/submit_grading`, `/get_grading_status` and `/collect_score`. No agent,
 environment or grader code runs in the AC2 job.
 
@@ -23,13 +23,13 @@ ac2 secrets put --key OPENAI_API_KEY --value <openai-api-key>
 The uploader reads a pinned revision of
 [hiyouga/geometry3k](https://huggingface.co/datasets/hiyouga/geometry3k)
 (MIT license, converted from [InterGPS](https://github.com/lupantech/InterGPS))
-and creates `geo3k-train` (2,101 tasks) and `geo3k-validation` (300 tasks).
+and creates `geo3k-train` (2,100 tasks) and `geo3k-validation` (300 tasks).
 Questions and PNG diagrams become message content parts; expected answers go
 in `grader_params`, which AC2 sends to the harness only for grading. The test
 split is left unused.
 
-The eval's model, `gpt-5.6-luna`, is called from the eval job, so it needs the
-OpenAI key wherever the harness runs. Training needs no OpenAI key.
+The eval's model, `gpt-5.6-luna`, is called from the eval job, which reads the
+OpenAI key from that AC2 secret. Training needs no OpenAI key.
 
 ## Run
 
@@ -58,7 +58,7 @@ Run the baseline eval in a third terminal, without the connector variables:
 uv run python -m geo3k_vlm.eval
 ```
 
-It runs the validation set through your harness with `gpt-5.6-luna`.
+It runs 8 validation tasks through your harness with `gpt-5.6-luna`.
 
 ## Train
 
@@ -69,12 +69,11 @@ uv run python -m geo3k_vlm.train
 ```
 
 It trains `Qwen/Qwen3.5-9B-VL` for 20 steps of 8 tasks with 4 rollouts each.
-The `-VL` suffix enables image training. The run evaluates the validation set
-through your harness before training and again on the final checkpoint. Pass
-`--steps` for a shorter or longer run.
+The `-VL` suffix enables image training. Pass `--steps` for a shorter or longer
+run.
 
-`max_response_len=8192` caps each answer. The model reasons at length, so some
-rollouts still reach the cap; the harness reports those as `truncated`.
+`max_response_len=8192` caps each answer; the harness reports a rollout that
+reaches the cap as `truncated`.
 
 See the [VLM guide](https://docs.appliedcompute.com/platform/training/vlm)
 for more on image inputs.
