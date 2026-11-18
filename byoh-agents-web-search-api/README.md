@@ -114,11 +114,10 @@ The API listens on `http://127.0.0.1:8000` by default.
 ### 2. Start the Harness Connector
 
 The connector uses machine credentials that are separate from your credentials
-created by `ac2 login`. If the organization does not already have
-connector credentials, an organization admin creates them once:
+created by `ac2 login`. An organization admin creates them for your project:
 
 ```bash
-ac2 harness credentials create
+ac2 harness credentials create --project-id <project-id>
 ```
 
 The command prints `AC2_SERVICE_CLIENT_ID` and `AC2_SERVICE_CLIENT_SECRET`. In a
