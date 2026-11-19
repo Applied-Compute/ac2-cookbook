@@ -38,7 +38,7 @@ CONFIG = TrainingConfig(
     ac2_grader=MyGrader(),
     ac2_train_dataset="my-train-dataset",
     ac2_eval_dataset="my-eval-dataset",
-    cluster_id="ac-jurassic",
+    cluster_id="<cluster-id>",
     name="my-train",
 )
 
