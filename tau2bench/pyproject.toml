@@ -5,16 +5,19 @@ build-backend = "hatchling.build"
 [project]
 name = "tau2bench"
 version = "0.1.0"
-description = "ac2 env: tau2-bench customer-service benchmark (airline / retail / telecom)."
+description = "Self-hosted AC2 harness for the tau2-bench customer-service benchmark."
 requires-python = ">=3.12"
 dependencies = [
-    "httpx>=0.27.0",
+    "ac2>=0.3.97",
     "pydantic>=2.0.0",
-    "python-dotenv>=1.0.0",
 ]
 
-[dependency-groups]
-dev = ["ac2>=0.3.46"]
+[project.optional-dependencies]
+harness = [
+    "fastapi>=0.115.0",
+    "openai>=1.99.0",
+    "uvicorn>=0.34.0",
+]
 
 [tool.uv]
 package = true
