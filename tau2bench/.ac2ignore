@@ -20,4 +20,10 @@ build/
 .idea/
 .vscode/
 .DS_Store
-src/tau2bench/dataloader/cache/
+harness_server.py
+upload_dataset.py
+src/tau2bench/dataloader/
+src/tau2bench/environments/
+src/tau2bench/graders/
+src/tau2bench/initial_state.py
+src/tau2bench/user.py

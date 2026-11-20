@@ -6,7 +6,7 @@ Five reward components, multiplicatively composed via ``reward_basis``
 - ``ACTION``      — every expected tool call was made (binary).
 - ``COMMUNICATE`` — every required substring appears in an assistant message
   (case-insensitive, commas stripped).
-- ``DB``          — agent (and, for telecom, user) DB hash matches a fresh
+- ``DB``          — the DB hash matches a fresh
   gold env that replayed the expected actions on the same initial state.
 - ``ENV_ASSERTION`` — every ``assert_*`` env method returns its expected value.
 - ``NL_ASSERTION``  — every natural-language assertion is judged ``true`` by
@@ -22,15 +22,13 @@ import json
 from enum import Enum
 from typing import Any
 
-from ac2.runtime import (
-    EnvironmentProtocol,
-    FunctionCall,
-    GraderOutput,
-    LLMGrader,
-    Message,
-    ModelConfiguration,
-    Trace,
-)
+from ac2.harness.types import ScoreResponse
+from ac2.runtime import EnvironmentProtocol
+from openai import AsyncOpenAI
+
+Messages = list[dict[str, Any]]
+
+JUDGE_MODEL = "gpt-5.6-luna"
 
 
 class RewardType(str, Enum):
@@ -72,44 +70,26 @@ Example response structure:
 # ── Trace helpers ────────────────────────────────────────────────────────
 
 
-def _all_items(trace: Trace) -> list[Any]:
-    items: list[Any] = []
-    for episode in trace:
-        items.extend(episode.get_items())
-    return items
-
-
-def _extract_tool_calls(trace: Trace) -> list[dict[str, Any]]:
+def _extract_tool_calls(messages: Messages) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    for item in _all_items(trace):
-        if isinstance(item, FunctionCall):
+    for message in messages:
+        for call in message.get("tool_calls") or []:
             try:
-                args = json.loads(item.arguments) if item.arguments else {}
+                args = json.loads(call["function"]["arguments"] or "{}")
             except json.JSONDecodeError:
                 args = {}
-            out.append({"name": item.name, "arguments": args})
+            out.append({"name": call["function"]["name"], "arguments": args})
     return out
 
 
-def _extract_assistant_messages(trace: Trace) -> list[str]:
-    out: list[str] = []
-    for item in _all_items(trace):
-        if (
-            isinstance(item, Message)
-            and item.role == "assistant"
-            and isinstance(item.content, str)
-            and item.content.strip()
-        ):
-            out.append(item.content)
-    return out
+def _extract_assistant_messages(messages: Messages) -> list[str]:
+    return [m["content"] for m in messages if m["role"] == "assistant" and m.get("content")]
 
 
-def _conversation_for_judge(trace: Trace) -> str:
-    lines = []
-    for item in _all_items(trace):
-        if isinstance(item, Message) and isinstance(item.content, str) and item.content:
-            lines.append(f"{item.role}: {item.content}")
-    return "\n".join(lines)
+def _conversation_for_judge(messages: Messages) -> str:
+    return "\n".join(
+        f"{m['role']}: {m['content']}" for m in messages if m["role"] in ("user", "assistant") and m.get("content")
+    )
 
 
 # ── Action evaluation ────────────────────────────────────────────────────
@@ -213,43 +193,27 @@ def _agent_db_hash(env: EnvironmentProtocol) -> str | None:
     return _hash_dict(state) if state else None
 
 
-def _user_db_hash(env: EnvironmentProtocol) -> str | None:
-    user_db_state = getattr(env, "user_db_state", None)
-    if user_db_state is None:
-        return None
-    state = user_db_state()
-    return _hash_dict(state) if state else None
-
-
 async def _evaluate_db(env: EnvironmentProtocol, grader_params: dict[str, Any]) -> dict[str, Any]:
     expected_actions = grader_params.get("expected_actions", []) or []
     initial_state = grader_params.get("initial_state")
 
     predicted_agent = _agent_db_hash(env)
-    predicted_user = _user_db_hash(env)
 
     gold_env = type(env)()
     gold_agent: str | None = None
-    gold_user: str | None = None
     try:
         await gold_env.setup({"initial_state": initial_state} if initial_state else {})
         await _replay_expected_actions(gold_env, expected_actions)
         gold_agent = _agent_db_hash(gold_env)
-        gold_user = _user_db_hash(gold_env)
     finally:
         await gold_env.teardown()
 
     agent_match = predicted_agent is not None and predicted_agent == gold_agent
-    user_match = predicted_user == gold_user  # both None counts as a match
-    db_match = agent_match and user_match
     return {
-        "score": 1.0 if db_match else 0.0,
+        "score": 1.0 if agent_match else 0.0,
         "agent_match": agent_match,
-        "user_match": user_match,
         "predicted_agent_hash": predicted_agent,
-        "predicted_user_hash": predicted_user,
         "gold_agent_hash": gold_agent,
-        "gold_user_hash": gold_user,
     }
 
 
@@ -262,14 +226,13 @@ async def _evaluate_env_assertions(env: EnvironmentProtocol, assertions: list[di
 
     checks = []
     score = 1.0
-    domain = getattr(env, "domain", None)
     for assertion in assertions:
         env_type = assertion.get("env_type", "assistant")
         func_name = assertion.get("func_name", "")
         args = assertion.get("arguments", {}) or {}
         expected = assertion.get("assert_value", True)
 
-        if env_type == "user" and domain not in ("telecom", "banking"):
+        if env_type == "user":
             checks.append({"assertion": assertion, "met": True, "skipped": True})
             continue
 
@@ -312,7 +275,12 @@ def _normalize_reward_basis(grader_params: dict[str, Any]) -> list[str]:
 # ── Grader ───────────────────────────────────────────────────────────────
 
 
-class Tau2BenchGrader(LLMGrader):
+async def grade(
+    params: dict[str, Any],
+    messages: Messages,
+    env: EnvironmentProtocol,
+    client: AsyncOpenAI,
+) -> ScoreResponse:
     """Multi-component tau2bench grader.
 
     ``grader_params`` carries the per-task expectations:
@@ -325,137 +293,111 @@ class Tau2BenchGrader(LLMGrader):
     - ``reward_basis``      : optional list of ``RewardType`` values
                               (default ``[DB, COMMUNICATE]``)
     """
+    tool_calls = _extract_tool_calls(messages)
 
-    model_config = ModelConfiguration(model="gpt-5.6-luna")
-
-    async def _grade(
-        self,
-        grader_params: dict | None,
-        trace: Trace,
-        env: EnvironmentProtocol | None,
-    ) -> GraderOutput:
-        if env is None:
-            raise ValueError(f"{type(self).__name__} grades inside an environment and was given none")
-        params = grader_params or {}
-
-        if getattr(env, "terminated", False) and not _was_transfer_to_human(trace):
-            termination_reason = getattr(env, "termination_reason", None)
-            reasoning = "Episode terminated abnormally before completion."
-            if termination_reason:
-                reasoning = f"{reasoning} termination_reason={termination_reason}"
-            return GraderOutput(
-                score=0.0,
-                reasoning=reasoning,
-                artifacts={"termination_reason": termination_reason} if termination_reason else {},
-            )
-
-        domain = params.get("domain") or getattr(env, "domain", None)
-        tool_calls = _extract_tool_calls(trace)
-        assistant_messages = _extract_assistant_messages(trace)
-        basis = _normalize_reward_basis(params)
-
-        action = _evaluate_actions(params.get("expected_actions", []) or [], tool_calls, domain)
-        comm = _evaluate_communicate(params.get("communicate_info", []) or [], assistant_messages)
-
-        db = await _evaluate_db(env, params) if RewardType.DB.value in basis else None
-        env_assert = (
-            await _evaluate_env_assertions(env, params.get("env_assertions", []) or [])
-            if RewardType.ENV_ASSERTION.value in basis
-            else None
-        )
-        nl = (
-            await self._evaluate_nl(trace, params.get("nl_assertions", []) or [])
-            if RewardType.NL_ASSERTION.value in basis
-            else None
+    if getattr(env, "terminated", False) and not _was_transfer_to_human(tool_calls):
+        termination_reason = getattr(env, "termination_reason", None)
+        reasoning = "Episode terminated abnormally before completion."
+        if termination_reason:
+            reasoning = f"{reasoning} termination_reason={termination_reason}"
+        return ScoreResponse(
+            score=0.0,
+            reasoning=reasoning,
+            artifacts={"termination_reason": termination_reason} if termination_reason else {},
         )
 
-        breakdown: dict[str, float] = {}
-        score = 1.0
-        if RewardType.ACTION.value in basis:
-            breakdown[RewardType.ACTION.value] = action["score"]
-            score *= action["score"]
-        if RewardType.COMMUNICATE.value in basis:
-            breakdown[RewardType.COMMUNICATE.value] = comm["score"]
-            score *= comm["score"]
-        if db is not None:
-            breakdown[RewardType.DB.value] = db["score"]
-            score *= db["score"]
-        if env_assert is not None:
-            breakdown[RewardType.ENV_ASSERTION.value] = env_assert["score"]
-            score *= env_assert["score"]
-        if nl is not None:
-            breakdown[RewardType.NL_ASSERTION.value] = nl["score"]
-            score *= nl["score"]
+    domain = params.get("domain") or getattr(env, "domain", None)
+    assistant_messages = _extract_assistant_messages(messages)
+    basis = _normalize_reward_basis(params)
 
-        artifacts: dict[str, Any] = {
-            "reward_basis": basis,
-            "reward_breakdown": breakdown,
-            "action_result": action,
-            "comm_result": comm,
+    action = _evaluate_actions(params.get("expected_actions", []) or [], tool_calls, domain)
+    comm = _evaluate_communicate(params.get("communicate_info", []) or [], assistant_messages)
+
+    db = await _evaluate_db(env, params) if RewardType.DB.value in basis else None
+    env_assert = (
+        await _evaluate_env_assertions(env, params.get("env_assertions", []) or [])
+        if RewardType.ENV_ASSERTION.value in basis
+        else None
+    )
+    nl = (
+        await _evaluate_nl(client, messages, params.get("nl_assertions", []) or [])
+        if RewardType.NL_ASSERTION.value in basis
+        else None
+    )
+
+    breakdown: dict[str, float] = {}
+    score = 1.0
+    if RewardType.ACTION.value in basis:
+        breakdown[RewardType.ACTION.value] = action["score"]
+        score *= action["score"]
+    if RewardType.COMMUNICATE.value in basis:
+        breakdown[RewardType.COMMUNICATE.value] = comm["score"]
+        score *= comm["score"]
+    if db is not None:
+        breakdown[RewardType.DB.value] = db["score"]
+        score *= db["score"]
+    if env_assert is not None:
+        breakdown[RewardType.ENV_ASSERTION.value] = env_assert["score"]
+        score *= env_assert["score"]
+    if nl is not None:
+        breakdown[RewardType.NL_ASSERTION.value] = nl["score"]
+        score *= nl["score"]
+
+    artifacts: dict[str, Any] = {
+        "reward_basis": basis,
+        "reward_breakdown": breakdown,
+        "action_result": action,
+        "comm_result": comm,
+    }
+    if db is not None:
+        artifacts["db_result"] = db
+    if env_assert is not None:
+        artifacts["env_assertion_result"] = env_assert
+    if nl is not None:
+        artifacts["nl_result"] = nl
+
+    reasoning = (
+        f"score={score} basis={basis} breakdown={breakdown} "
+        f"actions={action['total_matched']}/{action['total_expected']} "
+        f"communicate={comm['total_matched']}/{comm['total_expected']}"
+    )
+    return ScoreResponse(score=score, reasoning=reasoning, artifacts=artifacts)
+
+
+async def _evaluate_nl(client: AsyncOpenAI, messages: Messages, assertions: list[str]) -> dict[str, Any]:
+    if not assertions:
+        return {"score": 1.0, "checks": [], "total_expected": 0, "total_met": 0}
+
+    user_prompt = f"conversation:\n{_conversation_for_judge(messages)}\n\nexpectedOutcomes:\n{assertions}\n"
+    completion = await client.chat.completions.create(
+        model=JUDGE_MODEL,
+        messages=[
+            {"role": "system", "content": NL_ASSERTIONS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    data = _parse_judge_json(completion.choices[0].message.content or "")
+    results = data.get("results", [])
+
+    checks = [
+        {
+            "assertion": r.get("expectedOutcome", ""),
+            "met": bool(r.get("metExpectation", False)),
+            "reasoning": r.get("reasoning", ""),
         }
-        if db is not None:
-            artifacts["db_result"] = db
-        if env_assert is not None:
-            artifacts["env_assertion_result"] = env_assert
-        if nl is not None:
-            artifacts["nl_result"] = nl
-
-        reasoning = (
-            f"score={score} basis={basis} breakdown={breakdown} "
-            f"actions={action['total_matched']}/{action['total_expected']} "
-            f"communicate={comm['total_matched']}/{comm['total_expected']}"
-        )
-        return GraderOutput(score=score, reasoning=reasoning, artifacts=artifacts)
-
-    async def _evaluate_nl(self, trace: Trace, assertions: list[str]) -> dict[str, Any]:
-        if not assertions:
-            return {"score": 1.0, "checks": [], "total_expected": 0, "total_met": 0}
-
-        user_prompt = f"conversation:\n{_conversation_for_judge(trace)}\n\nexpectedOutcomes:\n{assertions}\n"
-        items = [
-            Message(role="system", content=NL_ASSERTIONS_SYSTEM_PROMPT),
-            Message(role="user", content=user_prompt),
-        ]
-        try:
-            result = await self.get_completion(items)
-            text = ""
-            for it in result.items:
-                if isinstance(it, Message) and isinstance(it.content, str):
-                    text = it.content
-                    break
-            data = _parse_judge_json(text)
-            results = data.get("results", [])
-        except Exception as e:
-            return {
-                "score": 0.0,
-                "checks": [],
-                "error": str(e),
-                "total_expected": len(assertions),
-                "total_met": 0,
-            }
-
-        checks = [
-            {
-                "assertion": r.get("expectedOutcome", ""),
-                "met": bool(r.get("metExpectation", False)),
-                "reasoning": r.get("reasoning", ""),
-            }
-            for r in results
-        ]
-        score = 1.0 if checks and all(c["met"] for c in checks) else 0.0
-        return {
-            "score": score,
-            "checks": checks,
-            "total_expected": len(assertions),
-            "total_met": sum(1 for c in checks if c["met"]),
-        }
+        for r in results
+    ]
+    score = 1.0 if checks and all(c["met"] for c in checks) else 0.0
+    return {
+        "score": score,
+        "checks": checks,
+        "total_expected": len(assertions),
+        "total_met": sum(1 for c in checks if c["met"]),
+    }
 
 
-def _was_transfer_to_human(trace: Trace) -> bool:
-    for item in _all_items(trace):
-        if isinstance(item, FunctionCall) and item.name == "transfer_to_human_agents":
-            return True
-    return False
+def _was_transfer_to_human(tool_calls: list[dict[str, Any]]) -> bool:
+    return any(call["name"] == "transfer_to_human_agents" for call in tool_calls)
 
 
 def _parse_judge_json(text: str) -> dict[str, Any]:
@@ -464,7 +406,7 @@ def _parse_judge_json(text: str) -> dict[str, Any]:
     ``gpt-5-*`` and several other current judge models like to wrap JSON output
     in ```json ... ``` fences even when the system prompt asks for raw JSON,
     so a bare ``json.loads`` raises ``JSONDecodeError`` and the NL-assertion
-    component falls through to a 0 score. Stripping the fence is enough.
+    grading fails. Stripping the fence is enough.
     """
     cleaned = text.strip()
     if cleaned.startswith("```"):
