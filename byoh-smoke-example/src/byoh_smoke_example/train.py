@@ -4,29 +4,22 @@ import argparse
 
 from ac2.sdk import Client, TrainingConfig, TrainingCustomHarnessConfig
 
-from .grader import AnswerGrader
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="byoh-smoke-example")
-    parser.add_argument("--dataset", default="byoh-smoke-eval")
-    parser.add_argument("--model", default="Qwen/Qwen3-4B")
     parser.add_argument("--steps", type=int, default=1)
     args = parser.parse_args()
 
-    client = Client(project=args.project)
+    client = Client(project="byoh-smoke-example")
     run = client.train.run(
         TrainingConfig(
-            model=args.model,
-            n_training_replicas=1,
+            model="Qwen/Qwen3-4B",
             n_inference_replicas=1,
             num_train_steps=args.steps,
             samples_per_problem=2,
             problem_batch_size=1,
             global_sampling_concurrency=2,
-            ac2_grader=AnswerGrader(),
-            ac2_train_dataset=args.dataset,
+            ac2_train_dataset="byoh-smoke-eval",
             custom_harness=TrainingCustomHarnessConfig(),
             eval_mode="off",
             name="byoh-smoke-example",

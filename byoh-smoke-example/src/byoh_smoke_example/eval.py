@@ -1,30 +1,19 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
-from .grader import AnswerGrader
-
 
 async def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="byoh-smoke-example")
-    parser.add_argument("--dataset", default="byoh-smoke-eval")
-    parser.add_argument("--model", default="gpt-5.6-luna")
-    args = parser.parse_args()
-
-    client = Client(project=args.project)
+    client = Client(project="byoh-smoke-example")
     run = await client.eval.run(
         EvalConfig(
-            grader=AnswerGrader(),
-            dataset=DatasetSource(dataset=args.dataset, num_tasks=3),
-            max_parallel=3,
+            dataset=DatasetSource(dataset="byoh-smoke-eval"),
             name="byoh-smoke-example",
             custom_harness=CustomHarnessConfig(
-                model=ModelConfiguration(model=args.model),
+                model=ModelConfiguration(model="gpt-5.6-luna"),
             ),
         )
     )

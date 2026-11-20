@@ -19,7 +19,7 @@ ac2 = false
 
 [[package]]
 name = "ac2"
-version = "0.3.95"
+version = "0.3.97"
 source = { registry = "https://api.appliedcompute.com/v1/pypi/simple/" }
 dependencies = [
     { name = "anthropic" },
@@ -53,9 +53,9 @@ dependencies = [
     { name = "websockets" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.95/ac2-0.3.95.tar.gz", hash = "sha256:cd714885f62ad370441242677fdecbaeecb18132538ffdff903f7ba4e47c0c34", upload-time = "2026-11-10T18:39:57.137Z" }
+sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.97/ac2-0.3.97.tar.gz", hash = "sha256:6bcf3e4d3661b82c9aef857a7e48ba9e2f4bc2c26957e812ef21927f9872439c", upload-time = "2026-11-12T03:16:57.131Z" }
 wheels = [
-    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.95/ac2-0.3.95-py3-none-any.whl", hash = "sha256:ca42fb4996feb0b1f97624c5db29c665d10ee2097bd20fa525ae94135ebd3cfd", upload-time = "2026-11-10T18:39:56.877Z" },
+    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.97/ac2-0.3.97-py3-none-any.whl", hash = "sha256:8e9759787ef9d24104484f17297193b735956a887681ff2d6081f7c8f2a625e8", upload-time = "2026-11-12T03:16:56.837Z" },
 ]
 
 [[package]]
@@ -326,7 +326,7 @@ harness = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ac2", specifier = ">=0.3.46", index = "https://api.appliedcompute.com/v1/pypi/simple/" },
+    { name = "ac2", specifier = ">=0.3.97", index = "https://api.appliedcompute.com/v1/pypi/simple/" },
     { name = "fastapi", marker = "extra == 'harness'", specifier = ">=0.115.0" },
     { name = "openai", marker = "extra == 'harness'", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
