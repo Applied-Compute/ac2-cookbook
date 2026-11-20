@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "byoh-modal-coding-api"
+name = "terminal-bench-harbor"
 version = "0.1.0"
 description = "Self-hosted AC2 coding harness using Harbor, OpenCode, and Modal."
 requires-python = ">=3.12"
 dependencies = [
-    "ac2>=0.3.46",
+    "ac2>=0.3.97",
     "pydantic>=2.0.0",
 ]
 
@@ -23,7 +23,7 @@ harness = [
 package = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/byoh_modal_coding_api"]
+packages = ["src/terminal_bench_harbor"]
 
 [[tool.uv.index]]
 name = "ac2"
