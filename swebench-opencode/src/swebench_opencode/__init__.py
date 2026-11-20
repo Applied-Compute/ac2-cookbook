@@ -1,1 +1,1 @@
-"""OpenCode custom harness for SWE-bench Verified."""
+"""Self-hosted OpenCode harness for SWE-bench Verified."""
