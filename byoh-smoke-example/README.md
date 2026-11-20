@@ -28,7 +28,7 @@ uv run --extra harness uvicorn harness_server:app
 ```
 
 Start the connector in a second terminal. An organization admin creates its
-credentials once with `ac2 harness credentials create`.
+credentials for the project with `ac2 harness credentials create --project-id <project-id>`.
 
 ```bash
 export AC2_SERVICE_CLIENT_ID=svc_...
