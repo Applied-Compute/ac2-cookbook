@@ -19,7 +19,7 @@ ac2 = false
 
 [[package]]
 name = "ac2"
-version = "0.3.97"
+version = "0.4.19"
 source = { registry = "https://api.appliedcompute.com/v1/pypi/simple/" }
 dependencies = [
     { name = "anthropic" },
@@ -53,9 +53,9 @@ dependencies = [
     { name = "websockets" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.97/ac2-0.3.97.tar.gz", hash = "sha256:6bcf3e4d3661b82c9aef857a7e48ba9e2f4bc2c26957e812ef21927f9872439c", upload-time = "2026-11-12T03:16:57.131Z" }
+sdist = { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.4.19/ac2-0.4.19.tar.gz", hash = "sha256:72f7deb3cfcbb74b98a4121d9fc92f3573e8cbbde26b840c94bb9afb847a4836", upload-time = "2026-11-25T17:07:42.534Z" }
 wheels = [
-    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.3.97/ac2-0.3.97-py3-none-any.whl", hash = "sha256:8e9759787ef9d24104484f17297193b735956a887681ff2d6081f7c8f2a625e8", upload-time = "2026-11-12T03:16:56.837Z" },
+    { url = "https://api.appliedcompute.com/v1/pypi/simple/ac2/0.4.19/ac2-0.4.19-py3-none-any.whl", hash = "sha256:9819f95b0ef39c1b7b74f7053e3daf83ef3e1b1ecb0e7c8c31ce24e0e759ebbb", upload-time = "2026-11-25T17:07:42.195Z" },
 ]
 
 [[package]]
@@ -314,21 +314,21 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ac2" },
+    { name = "openai" },
     { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
 harness = [
     { name = "fastapi" },
-    { name = "openai" },
     { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ac2", specifier = ">=0.3.97", index = "https://api.appliedcompute.com/v1/pypi/simple/" },
+    { name = "ac2", specifier = ">=0.4.19", index = "https://api.appliedcompute.com/v1/pypi/simple/" },
     { name = "fastapi", marker = "extra == 'harness'", specifier = ">=0.115.0" },
-    { name = "openai", marker = "extra == 'harness'", specifier = ">=1.0.0" },
+    { name = "openai", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "uvicorn", marker = "extra == 'harness'", specifier = ">=0.34.0" },
 ]

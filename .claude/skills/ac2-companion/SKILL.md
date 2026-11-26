@@ -21,8 +21,11 @@ grading in the harness, which the docs do not cover: follow this file and
 
 ## The pieces
 
-- **Harness API**: an HTTP server the user writes and runs. Start from
-  `byoh-smoke-example/harness_server.py`.
+- **Harness API**: an HTTP server the user runs. Write it as an
+  `ac2.harness.Harness` subclass and serve its `app()`; start from
+  `byoh-smoke-example/src/byoh_smoke_example/harness.py`. Passing the same
+  class as `harness=` in `EvalConfig` or `TasksConfig` has AC2 host it instead,
+  with no server or connector.
 - **Harness Connector**: `ac2 harness connect`. It connects out to AC2 and
   forwards requests to the Harness API, so the server needs no inbound access.
 - **AC2 job**: an eval or training run started with the SDK. It sends each task
