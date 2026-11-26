@@ -3,7 +3,11 @@
 The smallest [self-hosted harness](https://docs.appliedcompute.com/platform/custom-harnesses/self-hosted).
 Run it first to check your credentials, your network path to AC2, and the
 Harness Connector, then replace `run_rollout` in
-[`harness_server.py`](harness_server.py) with your agent.
+[`harness.py`](src/byoh_smoke_example/harness.py) with your agent.
+
+The harness is a `Harness` class. You can serve it yourself behind the
+connector, as below, or [hand it to AC2](#run-it-on-ac2-instead), which hosts it
+in a sandbox for the job.
 
 Each rollout makes one model call through the URL and key AC2 sends with
 `/submit`. The harness sends `policy` as the model name; AC2 serves the model
@@ -81,3 +85,18 @@ harness and prints the training run ID. Check the run with
 `ac2 train get <train-id>`. Training calls the model being trained, so it needs
 no OpenAI key. `global_sampling_concurrency` in `train.py` caps how many
 rollouts reach your harness at once. Pass `--steps` for more steps.
+
+## Run it on AC2 instead
+
+AC2 can host the same `SmokeHarness`, so you need neither the Harness API nor
+the connector. Pass the harness to the job:
+
+```bash
+uv run python -m byoh_smoke_example.hosted_eval
+uv run python -m byoh_smoke_example.hosted_train
+```
+
+The job pushes your project, and AC2 installs it in a sandbox and serves
+`SmokeHarness` there. Everything the harness imports must be in the project's
+`dependencies`, not an optional extra. The runs record `SmokeHarness` as their
+harness, and it shows on the project's registry page.

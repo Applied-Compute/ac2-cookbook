@@ -58,4 +58,6 @@ then run training. The benchmark READMEs end with How it works.
 
 The [custom harness overview](https://docs.appliedcompute.com/platform/custom-harnesses)
 describes the Harness API and the connector. For the grading endpoints, see
-[`byoh-smoke-example/harness_server.py`](byoh-smoke-example/harness_server.py).
+[`byoh-smoke-example/src/byoh_smoke_example/harness.py`](byoh-smoke-example/src/byoh_smoke_example/harness.py).
+The smoke example also shows how to hand the same harness to AC2 to host
+instead.

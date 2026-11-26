@@ -8,14 +8,14 @@ version = "0.1.0"
 description = "Self-hosted AC2 harness smoke example: one model call per rollout."
 requires-python = ">=3.12"
 dependencies = [
-    "ac2>=0.3.97",
+    "ac2>=0.4.19",
+    "openai>=1.0.0",
     "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
 harness = [
     "fastapi>=0.115.0",
-    "openai>=1.0.0",
     "uvicorn>=0.34.0",
 ]
 

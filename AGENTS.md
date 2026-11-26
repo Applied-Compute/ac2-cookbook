@@ -21,5 +21,7 @@ harness to AC2: a Harness API server the user runs, the Harness Connector
   the installed `ac2` package before running it.
 - Do not create credentials, store secrets, or start eval or training jobs
   unless the user asks. Have the user enter secret values themselves.
-- To build a new harness, copy `byoh-smoke-example/harness_server.py`, keep its
-  six routes, and replace `run_rollout` and the scoring in `/submit_grading`.
+- To build a new harness, copy `byoh-smoke-example/src/byoh_smoke_example/harness.py`
+  and replace `run_rollout` and the scoring in `submit_grading`. The same class
+  runs self-hosted (`harness_server.py` serves its `app()`) or hosted by AC2
+  (pass it as `harness=`; see `hosted_eval.py` and `hosted_train.py`).
