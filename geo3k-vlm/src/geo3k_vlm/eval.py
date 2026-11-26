@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, DatasetSource, EvalConfig
 
 
-async def main() -> None:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="geo3k-vlm")
     parser.add_argument("--model", default="gpt-5.6-luna")
     args = parser.parse_args()
 
     client = Client(project=args.project)
-    run = await client.eval.run(
+    run = client.eval.run(
         EvalConfig(
             dataset=DatasetSource(dataset="geo3k-validation", num_tasks=8),
             max_parallel=8,
@@ -28,4 +27,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
