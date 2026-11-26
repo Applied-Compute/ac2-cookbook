@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 
 from ac2.runtime import ModelConfiguration
 from ac2.sdk import Client, CustomHarnessConfig, EvalConfig
 
 
-async def main() -> None:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="terminal-bench-harbor")
     parser.add_argument("--dataset", default="terminal-bench-smoke")
@@ -15,7 +14,7 @@ async def main() -> None:
     args = parser.parse_args()
 
     client = Client(project=args.project)
-    run = await client.eval.run(
+    run = client.eval.run(
         EvalConfig(
             dataset=args.dataset,
             name="terminal-bench-harbor",
@@ -28,4 +27,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
